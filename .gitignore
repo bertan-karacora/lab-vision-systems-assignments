@@ -133,3 +133,6 @@ dmypy.json
 
 # Pretrained weights
 */weights
+
+# Experiment checkpoints
+checkpoints/
