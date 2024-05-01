@@ -136,3 +136,6 @@ dmypy.json
 
 # Experiment checkpoints
 checkpoints/
+
+# Optuna data
+optuna.db
