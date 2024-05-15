@@ -56,8 +56,6 @@ cd ..
 rm -rf Python-3.12.2
 ```
 
-Every assignment is a Python package which can be installed via:
-
 ## Points
 
 | Assignment |  Max  | Points |

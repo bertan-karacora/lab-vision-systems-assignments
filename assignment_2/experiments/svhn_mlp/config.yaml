@@ -1,0 +1,154 @@
+criterion:
+    kwargs: {}
+    type: CrossEntropyLoss
+data:
+    test:
+        dataloader:
+            kwargs:
+                batch_size: 256
+                shuffle: false
+        dataset:
+            kwargs:
+                download: false
+                ratio_train2validate: 0.83
+            name: SVHN
+            transforms:
+                features:
+                    -   kwargs: {}
+                        name: ToTensor
+                target: []
+    train:
+        dataloader:
+            kwargs:
+                batch_size: 256
+                shuffle: true
+        dataset:
+            kwargs:
+                download: false
+                ratio_train2validate: 0.83
+            name: SVHN
+            transforms:
+                features:
+                    -   kwargs: {}
+                        name: ToTensor
+                target: []
+    validate:
+        dataloader:
+            kwargs:
+                batch_size: 256
+                shuffle: false
+        dataset:
+            kwargs:
+                download: false
+                ratio_train2validate: 0.83
+            name: SVHN
+            transforms:
+                features:
+                    -   kwargs: {}
+                        name: ToTensor
+                target: []
+frequency_checkpoint: 50
+frequency_log: 10
+measurers:
+    -   kwargs: {}
+        name: Accuracy
+model:
+    kwargs:
+        name_layer_act: ReLU
+        name_layer_norm: BatchNorm1d
+        num_channels_in: 3072
+        num_channels_out: 10
+        nums_channels_hidden:
+            - 1024
+            - 256
+            - 64
+        prob_dropout: 0.0325
+        use_bias: true
+    name: MLP
+optimization_hyperparams:
+    direction: maximize
+    metric: Accuracy
+    params_to_optimize:
+        -   kwargs:
+                high: 0.01
+                log: true
+                low: 1.0e-05
+            name: Learning rate
+            path_in_config:
+                - training
+                - lr
+            type: float
+        -   kwargs:
+                choices:
+                    - false
+                    - true
+            name: Usage of bias
+            path_in_config:
+                - model
+                - kwargs
+                - use_bias
+            type: categorical
+        -   kwargs:
+                high: 0.3
+                low: 0.0
+            name: Dropout probability
+            path_in_config:
+                - model
+                - kwargs
+                - prob_dropout
+            type: float
+        -   kwargs:
+                choices:
+                    - null
+                    - BatchNorm1d
+                    - LayerNorm
+            name: Normalization layer
+            path_in_config:
+                - model
+                - kwargs
+                - name_layer_norm
+            type: categorical
+        -   kwargs:
+                choices:
+                    - ReLU
+                    - LeakyReLU
+            name: Activation layer
+            path_in_config:
+                - model
+                - kwargs
+                - name_layer_act
+            type: categorical
+        -   kwargs:
+                choices:
+                    - []
+                    -   - 64
+                    -   - 256
+                    -   - 512
+                    -   - 2048
+                    -   - 128
+                        - 32
+                    -   - 512
+                        - 128
+                    -   - 1024
+                        - 256
+                    -   - 512
+                        - 128
+                        - 32
+                    -   - 1024
+                        - 256
+                        - 64
+                    -   - 2048
+                        - 512
+                        - 128
+            name: Hidden dimensions
+            path_in_config:
+                - model
+                - kwargs
+                - nums_channels_hidden
+            type: list
+training:
+    num_epochs: 200
+    optimizer:
+        kwargs:
+            lr: 5.87e-05
+        name: Adam

@@ -1,0 +1,238 @@
+criterion:
+    kwargs: {}
+    name: CrossEntropyLoss
+data:
+    test:
+        dataloader:
+            kwargs:
+                batch_size: 256
+                shuffle: false
+        dataset:
+            kwargs:
+                download: false
+                ratio_train2validate: 0.83
+            name: SVHN
+            transforms:
+                features:
+                    -   kwargs: {}
+                        name: ToTensor
+                target: []
+    train:
+        dataloader:
+            kwargs:
+                batch_size: 256
+                shuffle: true
+        dataset:
+            kwargs:
+                download: false
+                ratio_train2validate: 0.83
+            name: SVHN
+            transforms:
+                features:
+                    -   kwargs: {}
+                        name: ToTensor
+                target: []
+    validate:
+        dataloader:
+            kwargs:
+                batch_size: 256
+                shuffle: false
+        dataset:
+            kwargs:
+                download: false
+                ratio_train2validate: 0.83
+            name: SVHN
+            transforms:
+                features:
+                    -   kwargs: {}
+                        name: ToTensor
+                target: []
+frequency_checkpoint: 50
+frequency_log: 10
+measurers:
+    -   kwargs: {}
+        name: Accuracy
+model:
+    kwargs:
+        kwargs_body:
+            kwargs_conv:
+                padding: same
+                padding_mode: reflect
+            kwargs_pool: {}
+            name_layer_act: ReLU
+            name_layer_norm: InstanceNorm2d
+            name_layer_pool: MaxPool2d
+            shape_kernel_conv:
+                - 5
+                - 5
+            shape_kernel_pool:
+                - 2
+                - 2
+        kwargs_head:
+            name_layer_act: ReLU
+            use_bias: true
+        num_channels_out: 10
+        nums_channels_hidden_body:
+            - 32
+            - 64
+            - 128
+        nums_channels_hidden_head: []
+        shape_input:
+            - 3
+            - 32
+            - 32
+    name: CNN2d
+optimization_hyperparams:
+    direction: maximize
+    metric: Accuracy
+    params_to_optimize:
+        -   kwargs:
+                high: 0.001
+                log: true
+                low: 1.0e-05
+            name: Learning rate
+            path_in_config:
+                - training
+                - lr
+            type: float
+        -   kwargs:
+                choices:
+                    - []
+                    -   - 16
+                    -   - 64
+                    -   - 128
+                    -   - 16
+                        - 32
+                    -   - 32
+                        - 64
+                    -   - 16
+                        - 32
+                        - 64
+                    -   - 32
+                        - 64
+                        - 128
+                    -   - 64
+                        - 128
+                        - 256
+            name: Hidden dimensions of body
+            path_in_config:
+                - model
+                - kwargs
+                - nums_channels_hidden_body
+            type: list
+        -   kwargs:
+                choices:
+                    - []
+                    -   - 64
+                    -   - 128
+                    -   - 256
+                    -   - 512
+                    -   - 64
+                        - 32
+                    -   - 128
+                        - 64
+                    -   - 256
+                        - 128
+            name: Hidden dimensions of head
+            path_in_config:
+                - model
+                - kwargs
+                - nums_channels_hidden_head
+            type: list
+        -   kwargs:
+                choices:
+                    -   - 1
+                        - 1
+                    -   - 3
+                        - 3
+                    -   - 5
+                        - 5
+                    -   - 7
+                        - 7
+            name: Convolution kernel shape
+            path_in_config:
+                - model
+                - kwargs
+                - kwargs_body
+                - shape_kernel_conv
+            type: list
+        -   kwargs:
+                choices:
+                    - null
+                    - BatchNorm2d
+                    - InstanceNorm2d
+            name: Normalization layer in body
+            path_in_config:
+                - model
+                - kwargs
+                - kwargs_body
+                - name_layer_norm
+            type: categorical
+        -   kwargs:
+                choices:
+                    - ReLU
+                    - LeakyReLU
+                    - Softplus
+            name: Activation layer in body
+            path_in_config:
+                - model
+                - kwargs
+                - kwargs_body
+                - name_layer_act
+            type: categorical
+        -   kwargs:
+                choices:
+                    - MaxPool2d
+                    - AvgPool2d
+            name: Pooling layer in body
+            path_in_config:
+                - model
+                - kwargs
+                - kwargs_body
+                - name_layer_pool
+            type: categorical
+        -   kwargs:
+                choices:
+                    - false
+                    - true
+            name: Usage of bias in convolution
+            path_in_config:
+                - model
+                - kwargs
+                - kwargs_body
+                - kwargs_conv
+                - bias
+            type: categorical
+        -   kwargs:
+                choices:
+                    - valid
+                    - same
+            name: Padding in convolution
+            path_in_config:
+                - model
+                - kwargs
+                - kwargs_body
+                - kwargs_conv
+                - padding
+            type: categorical
+        -   kwargs:
+                choices:
+                    - zeros
+                    - reflect
+                    - replicate
+                    - circular
+            name: Padding mode in convolution
+            path_in_config:
+                - model
+                - kwargs
+                - kwargs_body
+                - kwargs_conv
+                - padding_mode
+            type: categorical
+training:
+    num_epochs: 100
+    optimizer:
+        kwargs:
+            lr: 0.0001
+            weight_decay: 0.02
+        name: Adam
