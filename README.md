@@ -17,8 +17,6 @@
 
 ## Setup
 
-For Python-only projects, as long as any system requirements are only packages I already have installed (or intend to keep), I prefer `venv` over alternatives like `Docker` or `Anaconda`.
-
 ### System requirements
 
 ```bash
@@ -35,30 +33,15 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Alternative: Python 3.12 as local executable
-
-Assuming you have installed:
-
-- wget
-- build-essential
-
-Installing Python 3.12 in `~/.local/`:
-
-```bash
-wget https://www.python.org/ftp/python/3.12.2/Python-3.12.2.tgz
-tar zxfv Python-3.12.2.tgz
-rm Python-3.12.2.tgz
-cd Python-3.12.2
-./configure --prefix="$HOME/.local/" --enable-optimizations --with-lto
-make
-make install
-cd ..
-rm -rf Python-3.12.2
-```
-
 ## Points
 
 | Assignment |  Max  | Points |
 | :--------: | :---: | :----: |
 |     1      |       |        |
+|     2      |  100  |  100   |
+|     3      |       |        |
+|     4      |       |        |
+|     5      |       |        |
+|     6      |       |        |
+|     7      |       |        |
 |  **SUM**   |       |        |
