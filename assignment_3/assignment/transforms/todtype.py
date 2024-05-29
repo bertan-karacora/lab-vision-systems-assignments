@@ -20,5 +20,5 @@ class ToDtype(tv_transforms.Transform):
         )
 
     def _transform(self, features, params):
-        features_transformed = self.transform_tv._transform(features, params)
+        features_transformed = self.transform_tv(features)
         return features_transformed

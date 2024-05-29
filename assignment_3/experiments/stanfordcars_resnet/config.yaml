@@ -77,8 +77,8 @@ data:
                             name: RandomHorizontalFlip
                         -   kwargs:
                                 degrees:
-                                    - -45.0
-                                    - 45.0
+                                    - -20.0
+                                    - 20.0
                             name: RandomRotation
                         -   kwargs:
                                 dtype: float32
@@ -95,8 +95,8 @@ data:
                                     - -0.2
                                     - 0.2
                                 saturation:
-                                    - 0.8
-                                    - 1.2
+                                    - 0.9
+                                    - 1.1
                             name: ColorJitter
                         -   kwargs:
                                 mean: 0.0
@@ -158,13 +158,21 @@ data:
                                     - 0.225
                             name: Normalize
                 target: null
-frequency_checkpoint: 50
+frequency_checkpoint: 10
 frequency_log: 5
 measurers:
     -   kwargs: {}
         name: Accuracy
 model:
-    fine_tuning:
+    kwargs:
+        progress: false
+        weights: DEFAULT
+    name: resnet18
+    shape_input:
+        - 3
+        - 224
+        - 224
+    transfer:
         layers:
             -   model:
                     kwargs:
@@ -174,20 +182,12 @@ model:
                         use_bias: true
                     name: MLP
                 name: fc
-    kwargs:
-        progress: false
-        weights: DEFAULT
-    name: resnet18
-    shape_input:
-        - 3
-        - 224
-        - 224
 training:
-    num_epochs: 100
+    num_epochs: 20
     optimizer:
         kwargs:
-            lr: 0.0005
-            weight_decay: 0.02
+            lr: 0.0003
+            weight_decay: 0.01
         name: Adam
     scheduler:
         kwargs:

@@ -165,8 +165,9 @@ measurers:
         name: Accuracy
 model:
     kwargs:
+        progress: false
         weights: DEFAULT
-    name: mobilenet_v3_large
+    name: convnext_tiny
     shape_input:
         - 3
         - 224
@@ -176,27 +177,23 @@ model:
         layers:
             -   model:
                     kwargs:
-                        inplace: true
-                        name_layer_act: Hardswish
-                        num_channels_in: 960
+                        name_layer_norm: LayerNorm2d
+                        num_channels_in: 768
                         num_channels_out: 196
-                        nums_channels_hidden:
-                            - 1280
-                        prob_dropout: 0.2
                         use_bias: true
-                    name: MLP
+                    name: ConvNextHead
                 name: classifier
 training:
-    num_epochs: 20
+    num_epochs: 10
     optimizer:
         kwargs:
-            lr: 0.0003
+            lr: 0.0001
             weight_decay: 0.01
         name: Adam
     scheduler:
         kwargs:
             factor: 0.5
-            patience: 10
+            patience: 5
         name: ReduceLROnPlateau
 visualization:
     kwargs_unnormalize:

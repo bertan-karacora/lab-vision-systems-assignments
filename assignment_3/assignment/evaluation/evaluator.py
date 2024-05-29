@@ -12,7 +12,6 @@ import assignment.measurement
 
 class Evaluator:
     def __init__(self, name_exp, model):
-        self.callbacks = None
         self.criterion = None
         self.dataloader_test = None
         self.dataset_test = None

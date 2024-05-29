@@ -6,9 +6,7 @@ class Accuracy:
         predictions = torch.argmax(output, dim=-1).flatten()
 
         if len(targets.shape) > 1:
-            print(targets.shape)
             targets = torch.argmax(targets, dim=-1).flatten()
-            print(targets.shape)
 
         num_positives_true = len(torch.where(predictions == targets)[0])
         num_total = len(targets)

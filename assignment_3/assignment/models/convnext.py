@@ -1,6 +1,11 @@
-from functools import partial
 import torch
 
+class LayerNorm2d(torch.nn.LayerNorm):
+    def forward(self, x):
+        x = x.permute(0, 2, 3, 1)
+        x = torch.nn.functional.layer_norm(x, self.normalized_shape, self.weight, self.bias, self.eps)
+        x = x.permute(0, 3, 1, 2)
+        return x
 
 class ConvNextHead(torch.nn.Module):
     def __init__(
@@ -12,9 +17,8 @@ class ConvNextHead(torch.nn.Module):
     ):
         super().__init__()
 
-        layer_norm = getattr(torch.nn, name_layer_norm)
         self.head = torch.nn.Sequential(
-            partial(layer_norm, eps=1e-6),
+            LayerNorm2d(num_channels_in, eps=1e-6),
             torch.nn.Flatten(1),
             torch.nn.Linear(num_channels_in, num_channels_out, bias=use_bias),
         )

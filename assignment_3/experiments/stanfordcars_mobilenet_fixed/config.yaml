@@ -165,6 +165,7 @@ measurers:
         name: Accuracy
 model:
     kwargs:
+        progress: false
         weights: DEFAULT
     name: mobilenet_v3_large
     shape_input:
@@ -172,7 +173,7 @@ model:
         - 224
         - 224
     transfer:
-        epochs_freeze: 0
+        epochs_freeze: 50
         layers:
             -   model:
                     kwargs:
@@ -196,7 +197,7 @@ training:
     scheduler:
         kwargs:
             factor: 0.5
-            patience: 10
+            patience: 5
         name: ReduceLROnPlateau
 visualization:
     kwargs_unnormalize:
