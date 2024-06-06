@@ -1,0 +1,6 @@
+_path_dir_data: "/home/user/karacora/lab-vision-systems-assignments/assignment_4/data"
+_path_dir_exps: "/home/user/karacora/lab-vision-systems-assignments/assignment_4/experiments"
+_path_dir_weights: "/home/user/karacora/lab-vision-systems-assignments/assignment_4/weights"
+
+_num_workers_dataloading: 4
+_seed_rng: 42

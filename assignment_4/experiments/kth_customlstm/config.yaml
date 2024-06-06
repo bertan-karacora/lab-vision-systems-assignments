@@ -1,0 +1,83 @@
+criterion:
+    kwargs: {}
+    name: CrossEntropyLoss
+data:
+    test:
+        dataloader:
+            kwargs:
+                batch_size: 64
+                shuffle: false
+        dataset:
+            kwargs:
+                len_sequence: 15
+            name: KTH
+            transform:
+                features: null
+                target: null
+    train:
+        dataloader:
+            kwargs:
+                batch_size: 64
+                shuffle: true
+        dataset:
+            kwargs:
+                len_sequence: 15
+            name: KTH
+            transform:
+                features:
+                    kwargs: {}
+                    name: Compose
+                    transforms:
+                        -   kwargs:
+                                p: 0.5
+                            name: RandomHorizontalFlip
+                        -   kwargs:
+                                degrees:
+                                    - -10.0
+                                    - 10.0
+                            name: RandomRotation
+                target: null
+    validate:
+        dataloader:
+            kwargs:
+                batch_size: 64
+                shuffle: false
+        dataset:
+            kwargs:
+                len_sequence: 15
+            name: KTH
+            transform:
+                features: null
+                target: null
+frequency_checkpoint: 10
+frequency_log: 5
+measurers:
+    -   kwargs: {}
+        name: Accuracy
+model:
+    kwargs:
+        name_func_init: zeros
+        num_channels_hidden:
+            - 1024
+            - 128
+        num_channels_in: 4096
+        num_channels_out: 6
+        num_layers_lstm: 2
+    name: LSTMCustomClassifier
+    shape_input:
+        - 15
+        - 1
+        - 64
+        - 64
+training:
+    num_epochs: 10
+    optimizer:
+        kwargs:
+            lr: 0.0003
+            weight_decay: 0.01
+        name: Adam
+    scheduler:
+        kwargs:
+            factor: 0.5
+            patience: 5
+        name: ReduceLROnPlateau

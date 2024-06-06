@@ -1,0 +1,75 @@
+data:
+    train:
+        dataset:
+            name: KTH
+            transform:
+                features:
+                    name: Compose
+                    kwargs: {}
+                    transforms:
+                        - name: RandomHorizontalFlip
+                          kwargs:
+                              p: 0.5
+                        - name: RandomRotation
+                          kwargs:
+                              degrees: [-10.0, 10.0]
+                target: null
+            kwargs:
+                len_sequence: 15
+        dataloader:
+            kwargs:
+                batch_size: 64
+                shuffle: true
+    validate:
+        dataset:
+            name: KTH
+            transform:
+                features: null
+                target: null
+            kwargs:
+                len_sequence: 15
+        dataloader:
+            kwargs:
+                batch_size: 64
+                shuffle: false
+    test:
+        dataset:
+            name: KTH
+            transform:
+                features: null
+                target: null
+            kwargs:
+                len_sequence: 15
+        dataloader:
+            kwargs:
+                batch_size: 64
+                shuffle: false
+criterion:
+    name: CrossEntropyLoss
+    kwargs: {}
+measurers:
+    - name: Accuracy
+      kwargs: {}
+model:
+    name: LSTMCustomClassifier
+    shape_input: [15, 1, 64, 64]
+    kwargs:
+        num_channels_in: 4096
+        num_channels_hidden: [1024, 128]
+        num_channels_out: 6
+        num_layers_lstm: 2
+        name_func_init: "zeros"
+frequency_log: 5
+frequency_checkpoint: 10
+training:
+    num_epochs: 10
+    optimizer:
+        name: Adam
+        kwargs:
+            lr: 3.0e-4
+            weight_decay: 0.01
+    scheduler:
+        name: ReduceLROnPlateau
+        kwargs:
+            factor: 0.5
+            patience: 5
