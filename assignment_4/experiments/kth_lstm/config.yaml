@@ -108,6 +108,7 @@ model:
                 - 64
                 - 128
                 - 256
+                - 512
             shape_input:
                 - 1
                 - 64
@@ -135,7 +136,7 @@ model:
         - 64
         - 64
 training:
-    num_epochs: 100
+    num_epochs: 50
     optimizer:
         kwargs:
             lr: 0.0003

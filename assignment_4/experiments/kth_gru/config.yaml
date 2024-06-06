@@ -128,7 +128,7 @@ model:
             num_channels_out: 512
         name_encoder: CNN2dEncoder
         name_head: MLP
-        name_rnn: LSTMCustom
+        name_rnn: GRU
     name: RNNClassifier
     shape_input:
         - 15

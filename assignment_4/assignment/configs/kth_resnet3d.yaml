@@ -80,41 +80,17 @@ measurers:
     - name: Accuracy
       kwargs: {}
 model:
-    name: RNNClassifier
+    name: ResNet3d
     shape_input: [15, 1, 64, 64]
     kwargs:
-        name_encoder: CNN2dEncoder
-        kwargs_encoder:
-            shape_input: [1, 64, 64]
-            nums_channels_hidden_body: [64, 128, 256]
-            num_channels_out: 512
-            kwargs_body:
-                shape_kernel_conv: [5, 5]
-                shape_kernel_pool: [2, 2]
-                name_layer_act: LeakyReLU
-                name_layer_norm: BatchNorm2d
-                name_layer_pool: MaxPool2d
-                kwargs_conv:
-                    padding: same
-                kwargs_pool: {}
-        name_rnn: LSTMCustom
-        kwargs_rnn:
-            num_channels_in: 512
-            num_channels_out: 512
-            num_cells: 5
-            name_func_init: kaiming_uniform_
-        name_head: MLP
-        kwargs_head:
-            num_channels_in: 512
-            nums_channels_hidden: [256]
-            num_channels_out: 6
-            name_layer_act: LeakyReLU
-            name_layer_norm: BatchNorm1d
-            prob_dropout: 0.1
+        num_channels_in: 15
+        num_channels_out: 6
+        nums_layers: [2, 2, 2, 2]
+        block: BasicBlock
 frequency_log: 5
 frequency_checkpoint: 10
 training:
-    num_epochs: 100
+    num_epochs: 50
     optimizer:
         name: Adam
         kwargs:

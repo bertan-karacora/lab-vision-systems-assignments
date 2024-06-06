@@ -90,6 +90,70 @@ class CNN2dEncoder(torch.nn.Module):
         super().__init__()
         kwargs_body = kwargs_body or {}
 
+        nums_channels_body = [shape_input[0]] + list(nums_channels_hidden_body)
+        blocks_body = []
+        for num_channels_i, num_channels_o in zip(nums_channels_body[:-1], nums_channels_body[1:]):
+            blocks_body.append(
+                BlockCNN2d(
+                    num_channels_in=num_channels_i,
+                    num_channels_out=num_channels_o,
+                    **kwargs_body,
+                )
+            )
+        self.body = torch.nn.Sequential(*blocks_body)
+
+        self.head = torch.nn.Sequential(
+            torch.nn.AdaptiveAvgPool2d(output_size=1),
+            torch.nn.Flatten(start_dim=-3),
+            torch.nn.Linear(in_features=num_channels_o, out_features=num_channels_out),
+        )
+
+    def forward(self, input):
+        output = self.body(input)
+        output = self.head(output)
+        output = torch.squeeze(output)
+        return output
+
+
+class CNN2dEncoderSpatial(torch.nn.Module):
+    def __init__(
+        self,
+        shape_input,
+        nums_channels_hidden_body,
+        num_channels_out,
+        kwargs_body=None,
+    ):
+        super().__init__()
+        kwargs_body = kwargs_body or {}
+
+        nums_channels_body = [shape_input[0]] + list(nums_channels_hidden_body) + [num_channels_out]
+        blocks_body = []
+        for num_channels_i, num_channels_o in zip(nums_channels_body[:-1], nums_channels_body[1:]):
+            blocks_body.append(
+                BlockCNN2d(
+                    num_channels_in=num_channels_i,
+                    num_channels_out=num_channels_o,
+                    **kwargs_body,
+                )
+            )
+        self.body = torch.nn.Sequential(*blocks_body)
+
+    def forward(self, input):
+        output = self.body(input)
+        return output
+
+
+class CNN3dResnet(torch.nn.Module):
+    def __init__(
+        self,
+        shape_input,
+        nums_channels_hidden_body,
+        num_channels_out,
+        kwargs_body=None,
+    ):
+        super().__init__()
+        kwargs_body = kwargs_body or {}
+
         nums_channels_body = [shape_input[0]] + list(nums_channels_hidden_body) + [num_channels_out]
         blocks_body = []
         for num_channels_i, num_channels_o in zip(nums_channels_body[:-1], nums_channels_body[1:]):

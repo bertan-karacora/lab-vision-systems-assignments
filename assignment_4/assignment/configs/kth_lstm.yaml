@@ -86,7 +86,7 @@ model:
         name_encoder: CNN2dEncoder
         kwargs_encoder:
             shape_input: [1, 64, 64]
-            nums_channels_hidden_body: [64, 128, 256]
+            nums_channels_hidden_body: [64, 128, 256, 512]
             num_channels_out: 512
             kwargs_body:
                 shape_kernel_conv: [5, 5]

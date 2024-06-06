@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import torchsummary
 from tqdm import tqdm
 
 import assignment.config as config
@@ -74,6 +75,7 @@ class Evaluator:
 
     @torch.no_grad()
     def evaluate(self, quiet=False):
+        print(torchsummary.summary(self.model, [config.MODEL["shape_input"]], verbose=0))
         self.model = self.model.to(self.device)
 
         num_batches = len(self.dataloader_test)

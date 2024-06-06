@@ -80,13 +80,13 @@ measurers:
     - name: Accuracy
       kwargs: {}
 model:
-    name: GRU
+    name: RNNClassifier
     shape_input: [15, 1, 64, 64]
     kwargs:
         name_encoder: CNN2dEncoder
         kwargs_encoder:
             shape_input: [1, 64, 64]
-            nums_channels_hidden_body: [64, 128, 256]
+            nums_channels_hidden_body: [64, 128, 256, 512]
             num_channels_out: 512
             kwargs_body:
                 shape_kernel_conv: [5, 5]
@@ -97,8 +97,8 @@ model:
                 kwargs_conv:
                     padding: same
                 kwargs_pool: {}
-        name_gru: GRU
-        kwargs_gru:
+        name_rnn: GRU
+        kwargs_rnn:
             num_channels_in: 512
             num_channels_out: 512
             num_cells: 5
@@ -114,7 +114,7 @@ model:
 frequency_log: 5
 frequency_checkpoint: 10
 training:
-    num_epochs: 100
+    num_epochs: 50
     optimizer:
         name: Adam
         kwargs:

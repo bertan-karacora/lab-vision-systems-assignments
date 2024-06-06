@@ -31,7 +31,7 @@ def create_dirs_exp(path):
 
     for dir in dirs:
         path_dir = path / dir
-        shutil.rmtree(path_dir)
+        shutil.rmtree(path_dir, ignore_errors=True)
         path_dir.mkdir(parents=True, exist_ok=True)
         print(f"Created directory {path_dir}")
 
