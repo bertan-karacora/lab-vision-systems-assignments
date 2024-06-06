@@ -111,6 +111,7 @@ class Trainer:
                 setattr(self.model, dict_layer["name"], model_layer)
 
         self.print("Model")
+        self.print(self.model)
         self.print(torchsummary.summary(self.model, [config.MODEL["shape_input"]], verbose=0))
 
         self.print("Setting up model finished")
@@ -182,8 +183,9 @@ class Trainer:
             loss = self.criterion(output, targets)
 
             self.log_batch("validation", len(self.dataloader_validate) * epoch + i, epoch, len(targets), loss.item(), output, targets)
+            lr = self.optimizer.param_groups[0]["lr"]
             if i % config.FREQUENCY_LOG == 0 and not self.quiet:
-                progress_bar.set_description(f"Validating: Epoch {epoch:03d} | Batch {i:03d} | Loss {loss.item():.5f}")
+                progress_bar.set_description(f"Validating: Epoch {epoch:03d} | Batch {i:03d} | LR {lr:.6f} | Loss {loss.item():.5f}")
 
         self.log_epoch("validation", epoch, len(self.dataset_validate), len(self.dataloader_validate))
 
@@ -201,8 +203,9 @@ class Trainer:
             self.optimizer.step()
 
             self.log_batch("training", len(self.dataloader_train) * epoch + i, epoch, len(targets), loss.item(), output, targets)
+            lr = self.optimizer.param_groups[0]["lr"]
             if i % config.FREQUENCY_LOG == 0 and not self.quiet:
-                progress_bar.set_description(f"Training: Epoch {epoch:03d} | Batch {i:03d} | Loss {loss.item():.5f}")
+                progress_bar.set_description(f"Training: Epoch {epoch:03d} | Batch {i:03d} | LR {lr:.6f} | Loss {loss.item():.5f}")
 
         self.log_epoch("training", epoch, len(self.dataset_train), len(self.dataloader_train))
 

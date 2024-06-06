@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+import shutil
 import time
 
 import assignment.config as config
@@ -30,6 +31,7 @@ def create_dirs_exp(path):
 
     for dir in dirs:
         path_dir = path / dir
+        shutil.rmtree(path_dir)
         path_dir.mkdir(parents=True, exist_ok=True)
         print(f"Created directory {path_dir}")
 

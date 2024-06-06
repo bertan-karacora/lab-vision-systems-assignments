@@ -6,7 +6,7 @@ import seaborn as sbn
 import assignment.libs.utils_visualization as utils_visualization
 
 
-def plot_loss(log):
+def plot_loss(log, path_save=None):
     din_a4 = np.array([210, 297]) / 25.4
     fig = plt.figure(figsize=din_a4)
 
@@ -44,10 +44,12 @@ def plot_loss(log):
     subplot_loss(use_logscale=True)
 
     plt.tight_layout()
+    if path_save:
+        plt.savefig(path_save)
     plt.show()
 
 
-def plot_metrics(log):
+def plot_metrics(log, path_save=None):
     din_a4 = np.array([210, 297]) / 25.4
     fig = plt.figure(figsize=din_a4)
 
@@ -89,6 +91,8 @@ def plot_metrics(log):
     subplot_metrics(use_logscale=True)
 
     plt.tight_layout()
+    if path_save:
+        plt.savefig(path_save)
     plt.show()
 
 

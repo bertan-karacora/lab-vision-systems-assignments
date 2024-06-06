@@ -6,9 +6,9 @@ from assignment.models.mlp import MLP
 class BlockCNN2d(torch.nn.Sequential):
     def __init__(
         self,
-        num_channels_in=3,
-        num_channels_out=3,
-        shape_kernel_conv=(3, 3),
+        num_channels_in,
+        num_channels_out,
+        shape_kernel_conv=(5, 5),
         kwargs_conv=None,
         name_layer_norm=None,
         name_layer_act="ReLU",
@@ -38,10 +38,10 @@ class BlockCNN2d(torch.nn.Sequential):
 class CNN2d(torch.nn.Module):
     def __init__(
         self,
-        shape_input=(3, 32, 32),
-        nums_channels_hidden_body=(16, 32),
-        nums_channels_hidden_head=(2**6, 2**5),
-        num_channels_out=10,
+        shape_input,
+        nums_channels_hidden_body,
+        nums_channels_hidden_head,
+        num_channels_out,
         kwargs_body=None,
         kwargs_head=None,
     ):
@@ -73,7 +73,39 @@ class CNN2d(torch.nn.Module):
             **kwargs_head,
         )
 
-    def forward(self, x):
-        features_body = self.body(x)
-        y = self.head(features_body)
-        return y
+    def forward(self, input):
+        output = self.body(input)
+        output = self.head(output)
+        return output
+
+
+class CNN2dEncoder(torch.nn.Module):
+    def __init__(
+        self,
+        shape_input,
+        nums_channels_hidden_body,
+        num_channels_out,
+        kwargs_body=None,
+    ):
+        super().__init__()
+        kwargs_body = kwargs_body or {}
+
+        nums_channels_body = [shape_input[0]] + list(nums_channels_hidden_body) + [num_channels_out]
+        blocks_body = []
+        for num_channels_i, num_channels_o in zip(nums_channels_body[:-1], nums_channels_body[1:]):
+            blocks_body.append(
+                BlockCNN2d(
+                    num_channels_in=num_channels_i,
+                    num_channels_out=num_channels_o,
+                    **kwargs_body,
+                )
+            )
+        self.body = torch.nn.Sequential(*blocks_body)
+
+        self.head = torch.nn.AdaptiveAvgPool2d(output_size=1)
+
+    def forward(self, input):
+        output = self.body(input)
+        output = self.head(output)
+        output = torch.squeeze(output)
+        return output

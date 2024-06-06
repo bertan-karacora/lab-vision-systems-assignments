@@ -6,7 +6,6 @@ data:
         dataloader:
             kwargs:
                 batch_size: 64
-                persistent_workers: true
                 pin_memory: true
                 shuffle: false
         dataset:
@@ -24,7 +23,6 @@ data:
         dataloader:
             kwargs:
                 batch_size: 64
-                persistent_workers: true
                 pin_memory: true
                 shuffle: true
         dataset:
@@ -48,12 +46,29 @@ data:
                                     - -10.0
                                     - 10.0
                             name: RandomRotation
+                        -   kwargs:
+                                brightness:
+                                    - 0.5
+                                    - 1.5
+                                contrast:
+                                    - 0.8
+                                    - 1.2
+                                hue: 0
+                                saturation: 0
+                            name: ColorJitter
+                        -   kwargs:
+                                mean: 0.0
+                                std: 0.05
+                            name: GaussianNoise
+                        -   kwargs:
+                                max: 1.0
+                                min: 0.0
+                            name: Clip
                 target: null
     validate:
         dataloader:
             kwargs:
                 batch_size: 64
-                persistent_workers: true
                 pin_memory: true
                 shuffle: false
         dataset:
@@ -75,35 +90,45 @@ measurers:
 model:
     kwargs:
         kwargs_encoder:
-            name_layer_act: LeakyReLU
-            name_layer_norm: BatchNorm1d
-            num_channels_in: 3072
-            num_channels_out: 10
-            nums_channels_hidden:
-                - 1024
+            kwargs_body:
+                kwargs_conv:
+                    padding: same
+                kwargs_pool: {}
+                name_layer_act: LeakyReLU
+                name_layer_norm: BatchNorm2d
+                name_layer_pool: MaxPool2d
+                shape_kernel_conv:
+                    - 5
+                    - 5
+                shape_kernel_pool:
+                    - 2
+                    - 2
+            num_channels_out: 512
+            nums_channels_hidden_body:
+                - 64
+                - 128
                 - 256
-            prob_dropout: 0.1
-            use_bias: true
+            shape_input:
+                - 1
+                - 64
+                - 64
         kwargs_head:
             name_layer_act: LeakyReLU
             name_layer_norm: BatchNorm1d
-            num_channels_in: 3072
-            num_channels_out: 10
+            num_channels_in: 512
+            num_channels_out: 6
             nums_channels_hidden:
-                - 1024
                 - 256
             prob_dropout: 0.1
-            use_bias: true
-        name_encoder: MLP
-        name_func_init: zeros
+        kwargs_rnn:
+            name_func_init: kaiming_uniform_
+            num_cells: 5
+            num_channels_in: 512
+            num_channels_out: 512
+        name_encoder: CNN2dEncoder
         name_head: MLP
-        num_channels_in: 4096
-        num_channels_out: 6
-        num_layers_lstm: 1
-        nums_channels_hidden:
-            - 1024
-            - 128
-    name: LSTMCustomClassifier
+        name_rnn: LSTM
+    name: RNNClassifier
     shape_input:
         - 15
         - 1
@@ -114,7 +139,7 @@ training:
     optimizer:
         kwargs:
             lr: 0.0003
-            weight_decay: 0.01
+            weight_decay: 0.001
         name: Adam
     scheduler:
         kwargs:

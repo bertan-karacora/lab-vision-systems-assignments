@@ -6,7 +6,7 @@ import torch
 import assignment.libs.utils_visualization as utils_visualization
 
 
-def visualize_images(images, labels=None, indices=None):
+def visualize_images(images, labels=None, indices=None, path_save=None):
     din_a4 = np.array([210, 297]) / 25.4
     fig = plt.figure(figsize=din_a4)
 
@@ -34,6 +34,8 @@ def visualize_images(images, labels=None, indices=None):
         subplot_image(image, i)
 
     plt.tight_layout()
+    if path_save:
+        plt.savefig(path_save)
     plt.show()
 
 

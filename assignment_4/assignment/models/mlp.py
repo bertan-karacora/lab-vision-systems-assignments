@@ -12,11 +12,14 @@ class MLP(torch.nn.Module):
         inplace=None,
         use_bias=True,
         prob_dropout=None,
+        use_flatten=False,
+        kwargs_flatten=None,
     ):
         super().__init__()
 
         self.head = None
         self.inplace = inplace
+        self.kwargs_flatten = kwargs_flatten or {}
         self.name_layer_act = name_layer_act
         self.name_layer_norm = name_layer_norm
         self.num_channels_in = num_channels_in
@@ -24,6 +27,7 @@ class MLP(torch.nn.Module):
         self.nums_channels_hidden = nums_channels_hidden
         self.prob_dropout = prob_dropout
         self.use_bias = use_bias
+        self.use_flatten = use_flatten
 
         self._init()
 
@@ -34,7 +38,9 @@ class MLP(torch.nn.Module):
         kwargs_inplace = {"inplace": self.inplace} if self.inplace is not None else {}
 
         nums_channels = [self.num_channels_in] + list(self.nums_channels_hidden) + [self.num_channels_out]
-        layers = [torch.nn.Flatten()]
+        layers = []
+        if self.use_flatten:
+            layers += [torch.nn.Flatten(**self.kwargs_flatten)]
         for num_channels_i, num_channels_o in zip(nums_channels[:-2], nums_channels[1:-1]):
             layers += [torch.nn.Linear(num_channels_i, num_channels_o, bias=self.use_bias)]
 
