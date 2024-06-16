@@ -1,0 +1,251 @@
+criterion:
+    kwargs: {}
+    name: CrossEntropyLoss
+data:
+    all:
+        dataloader:
+            kwargs:
+                batch_size: 64
+                pin_memory: true
+                shuffle: true
+        dataset:
+            kwargs:
+                types_target: []
+                use_download: true
+            name: CelebA
+            transform:
+                features:
+                    kwargs: {}
+                    name: Compose
+                    transforms:
+                        -   kwargs: {}
+                            name: PILToTensor
+                        -   kwargs:
+                                size:
+                                    - 178
+                                    - 178
+                            name: CenterCrop
+                        -   kwargs:
+                                size:
+                                    - 128
+                                    - 128
+                            name: Resize
+                        -   kwargs:
+                                dtype: float32
+                                scale: true
+                            name: ToDtype
+                        -   kwargs:
+                                mean:
+                                    - 0.5082
+                                    - 0.422
+                                    - 0.3764
+                                std:
+                                    - 0.3048
+                                    - 0.2823
+                                    - 0.2807
+                            name: Normalize
+                target: null
+    test:
+        dataloader:
+            kwargs:
+                batch_size: 64
+                pin_memory: true
+                shuffle: false
+        dataset:
+            kwargs:
+                types_target: []
+                use_download: true
+            name: CelebA
+            transform:
+                features:
+                    kwargs: {}
+                    name: Compose
+                    transforms:
+                        -   kwargs: {}
+                            name: PILToTensor
+                        -   kwargs:
+                                dtype: float32
+                                scale: true
+                            name: ToDtype
+                        -   kwargs:
+                                size:
+                                    - 178
+                                    - 178
+                            name: CenterCrop
+                        -   kwargs:
+                                size:
+                                    - 128
+                                    - 128
+                            name: Resize
+                        -   kwargs:
+                                mean:
+                                    - 0.5082
+                                    - 0.422
+                                    - 0.3764
+                                std:
+                                    - 0.3048
+                                    - 0.2823
+                                    - 0.2807
+                            name: Normalize
+                target: null
+    training:
+        dataloader:
+            kwargs:
+                batch_size: 64
+                pin_memory: true
+                shuffle: true
+        dataset:
+            kwargs:
+                types_target: []
+                use_download: true
+            name: CelebA
+            transform:
+                features:
+                    kwargs: {}
+                    name: Compose
+                    transforms:
+                        -   kwargs: {}
+                            name: PILToTensor
+                        -   kwargs:
+                                size:
+                                    - 178
+                                    - 178
+                            name: CenterCrop
+                        -   kwargs:
+                                size:
+                                    - 128
+                                    - 128
+                            name: Resize
+                        -   kwargs:
+                                dtype: float32
+                                scale: true
+                            name: ToDtype
+                        -   kwargs:
+                                mean:
+                                    - 0.5082
+                                    - 0.422
+                                    - 0.3764
+                                std:
+                                    - 0.3048
+                                    - 0.2823
+                                    - 0.2807
+                            name: Normalize
+                target: null
+    validation:
+        dataloader:
+            kwargs:
+                batch_size: 64
+                pin_memory: true
+                shuffle: false
+        dataset:
+            kwargs:
+                types_target: []
+                use_download: true
+            name: CelebA
+            transform:
+                features:
+                    kwargs: {}
+                    name: Compose
+                    transforms:
+                        -   kwargs: {}
+                            name: PILToTensor
+                        -   kwargs:
+                                dtype: float32
+                                scale: true
+                            name: ToDtype
+                        -   kwargs:
+                                size:
+                                    - 178
+                                    - 178
+                            name: CenterCrop
+                        -   kwargs:
+                                size:
+                                    - 128
+                                    - 128
+                            name: Resize
+                        -   kwargs:
+                                mean:
+                                    - 0.5082
+                                    - 0.422
+                                    - 0.3764
+                                std:
+                                    - 0.3048
+                                    - 0.2823
+                                    - 0.2807
+                            name: Normalize
+                target: null
+frequency_checkpoint: 10
+frequency_log: 5
+measurers:
+    -   kwargs: {}
+        name: Accuracy
+model:
+    kwargs:
+        kwargs_encoder:
+            kwargs_body:
+                kwargs_conv:
+                    padding: same
+                kwargs_pool: {}
+                name_layer_act: LeakyReLU
+                name_layer_norm: BatchNorm2d
+                name_layer_pool: MaxPool2d
+                shape_kernel_conv:
+                    - 5
+                    - 5
+                shape_kernel_pool:
+                    - 2
+                    - 2
+            num_channels_out: 512
+            nums_channels_hidden_body:
+                - 64
+                - 128
+                - 256
+                - 512
+            shape_input:
+                - 1
+                - 64
+                - 64
+        kwargs_head:
+            name_layer_act: LeakyReLU
+            name_layer_norm: BatchNorm1d
+            num_channels_in: 512
+            num_channels_out: 6
+            nums_channels_hidden:
+                - 256
+            prob_dropout: 0.1
+        kwargs_rnn:
+            name_func_init: kaiming_uniform_
+            num_cells: 5
+            num_channels_in: 512
+            num_channels_out: 512
+        name_encoder: CNN2dEncoder
+        name_head: MLP
+        name_rnn: LSTM
+    name: RNNClassifier
+    shape_input:
+        - 15
+        - 1
+        - 64
+        - 64
+training:
+    num_epochs: 50
+    optimizer:
+        kwargs:
+            lr: 0.0003
+            weight_decay: 0.001
+        name: Adam
+    scheduler:
+        kwargs:
+            factor: 0.5
+            patience: 5
+        name: ReduceLROnPlateau
+visualization:
+    kwargs_unnormalize:
+        mean:
+            - 0.5082
+            - 0.422
+            - 0.3764
+        std:
+            - 0.3048
+            - 0.2823
+            - 0.2807
