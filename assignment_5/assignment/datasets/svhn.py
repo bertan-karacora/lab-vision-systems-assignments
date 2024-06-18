@@ -41,10 +41,9 @@ class SVHN(Dataset):
 
     def __str__(self):
         s = f"""Dataset {self.__class__.__name__}
-    Number of datapoints: {self.__len__()}
+    Number of samples: {self.__len__()}
     Path: {self.path}
     Split: {self.split}
-    Transform: {self.transform}
-    Transform of target: {self.transform_target}"""
-
+    Transform of samples: {self.transform}
+    Transform of targets: {self.transform_target}"""
         return s

@@ -14,11 +14,12 @@ class CelebA(torch.utils.data.Dataset):
         "test": "test",
     }
 
-    def __init__(self, path, split, transform=None, transform_target=None, use_download=False, types_target=None):
+    def __init__(self, path, split, transform=None, transform_target=None, use_download=False, types_target_tv=None, use_features_as_target=False):
         self.dataset_tv = None
+        self.use_features_as_target = use_features_as_target
         self.path = Path(path)
         self.split = split
-        self.types_target = types_target or []
+        self.types_target_tv = types_target_tv or []
         self.transform = transform
         self.transform_target = transform_target
         self.use_download = use_download
@@ -28,11 +29,11 @@ class CelebA(torch.utils.data.Dataset):
     def _init(self):
         self.dataset_tv = tv.datasets.CelebA(
             root=self.path,
-            split="all",
+            split=self.split2splittv[self.split],
             transform=self.transform,
             target_transform=self.transform_target,
             download=self.use_download,
-            target_type=self.types_target,
+            target_type=self.types_target_tv,
         )
 
     def __len__(self):
@@ -42,8 +43,8 @@ class CelebA(torch.utils.data.Dataset):
     def __getitem__(self, index):
         features, target = self.dataset_tv[index]
 
-        if not self.types_target:
-            target = features
+        if self.use_features_as_target:
+            target = features.detach().clone()
 
         return features, target
 

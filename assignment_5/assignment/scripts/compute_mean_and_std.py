@@ -11,9 +11,10 @@ def parse_args():
 
     parser = argparse.ArgumentParser(description="Compute mean and standard deviation of a dataset.")
     parser.add_argument("--config", help=f"Config name selected from {configs_available}", choices=configs_available, required=True)
+    parser.add_argument("--split", help=f"Dataset split", default="training")
     args = parser.parse_args()
 
-    return args.config
+    return args.config, args.split
 
 
 def compute_mean(dataloader):
@@ -38,12 +39,12 @@ def compute_std(dataloader, mean):
     return std
 
 
-def compute_mean_and_std(name_config):
+def compute_mean_and_std(name_config, split="training"):
     print(f"Computing mean and standard deviation ...")
 
     config.set_config_preset(name_config)
 
-    dataset_all, dataloader_all = utils_data.create_dataset_and_dataloader(split="all")
+    dataset_all, dataloader_all = utils_data.create_dataset_and_dataloader(split=split)
 
     print("Dataset")
     print(dataset_all)
@@ -58,8 +59,8 @@ def compute_mean_and_std(name_config):
 
 
 def main():
-    name_config = parse_args()
-    compute_mean_and_std(name_config)
+    name_config, split = parse_args()
+    compute_mean_and_std(name_config, split)
 
 
 if __name__ == "__main__":

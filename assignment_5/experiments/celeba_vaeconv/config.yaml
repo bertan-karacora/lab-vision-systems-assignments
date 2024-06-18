@@ -1,50 +1,12 @@
 criterion:
-    kwargs: {}
-    name: CrossEntropyLoss
+    -   kwargs:
+            beta: 1.0
+        name: SmoothL1Loss
+        weight: 1.0
+    -   kwargs: {}
+        name: ELBOGaussian
+        weight: 1e-3
 data:
-    all:
-        dataloader:
-            kwargs:
-                batch_size: 64
-                pin_memory: true
-                shuffle: true
-        dataset:
-            kwargs:
-                types_target: []
-                use_download: true
-            name: CelebA
-            transform:
-                features:
-                    kwargs: {}
-                    name: Compose
-                    transforms:
-                        -   kwargs: {}
-                            name: PILToTensor
-                        -   kwargs:
-                                size:
-                                    - 178
-                                    - 178
-                            name: CenterCrop
-                        -   kwargs:
-                                size:
-                                    - 128
-                                    - 128
-                            name: Resize
-                        -   kwargs:
-                                dtype: float32
-                                scale: true
-                            name: ToDtype
-                        -   kwargs:
-                                mean:
-                                    - 0.5082
-                                    - 0.422
-                                    - 0.3764
-                                std:
-                                    - 0.3048
-                                    - 0.2823
-                                    - 0.2807
-                            name: Normalize
-                target: null
     test:
         dataloader:
             kwargs:
@@ -53,8 +15,9 @@ data:
                 shuffle: false
         dataset:
             kwargs:
-                types_target: []
+                types_target_tv: []
                 use_download: true
+                use_features_as_target: true
             name: CelebA
             transform:
                 features:
@@ -63,10 +26,6 @@ data:
                     transforms:
                         -   kwargs: {}
                             name: PILToTensor
-                        -   kwargs:
-                                dtype: float32
-                                scale: true
-                            name: ToDtype
                         -   kwargs:
                                 size:
                                     - 178
@@ -78,14 +37,18 @@ data:
                                     - 128
                             name: Resize
                         -   kwargs:
+                                dtype: float32
+                                scale: true
+                            name: ToDtype
+                        -   kwargs:
                                 mean:
-                                    - 0.5082
-                                    - 0.422
-                                    - 0.3764
+                                    - 0.5084
+                                    - 0.4224
+                                    - 0.3768
                                 std:
                                     - 0.3048
-                                    - 0.2823
-                                    - 0.2807
+                                    - 0.2824
+                                    - 0.2808
                             name: Normalize
                 target: null
     training:
@@ -96,8 +59,9 @@ data:
                 shuffle: true
         dataset:
             kwargs:
-                types_target: []
+                types_target_tv: []
                 use_download: true
+                use_features_as_target: true
             name: CelebA
             transform:
                 features:
@@ -122,13 +86,13 @@ data:
                             name: ToDtype
                         -   kwargs:
                                 mean:
-                                    - 0.5082
-                                    - 0.422
-                                    - 0.3764
+                                    - 0.5084
+                                    - 0.4224
+                                    - 0.3768
                                 std:
                                     - 0.3048
-                                    - 0.2823
-                                    - 0.2807
+                                    - 0.2824
+                                    - 0.2808
                             name: Normalize
                 target: null
     validation:
@@ -139,8 +103,9 @@ data:
                 shuffle: false
         dataset:
             kwargs:
-                types_target: []
+                types_target_tv: []
                 use_download: true
+                use_features_as_target: true
             name: CelebA
             transform:
                 features:
@@ -149,10 +114,6 @@ data:
                     transforms:
                         -   kwargs: {}
                             name: PILToTensor
-                        -   kwargs:
-                                dtype: float32
-                                scale: true
-                            name: ToDtype
                         -   kwargs:
                                 size:
                                     - 178
@@ -164,21 +125,32 @@ data:
                                     - 128
                             name: Resize
                         -   kwargs:
+                                dtype: float32
+                                scale: true
+                            name: ToDtype
+                        -   kwargs:
                                 mean:
-                                    - 0.5082
-                                    - 0.422
-                                    - 0.3764
+                                    - 0.5084
+                                    - 0.4224
+                                    - 0.3768
                                 std:
                                     - 0.3048
-                                    - 0.2823
-                                    - 0.2807
+                                    - 0.2824
+                                    - 0.2808
                             name: Normalize
                 target: null
 frequency_checkpoint: 10
 frequency_log: 5
 measurers:
+    -   kwargs:
+            beta: 1.0
+        name: SmoothL1Loss
+        weight: 1.0
     -   kwargs: {}
-        name: Accuracy
+        name: ELBOGaussian
+        weight: 1e-3
+    -   kwargs: {}
+        name: FrechetInceptionDistance
 model:
     kwargs:
         kwargs_encoder:
@@ -221,7 +193,7 @@ model:
         name_encoder: CNN2dEncoder
         name_head: MLP
         name_rnn: LSTM
-    name: RNNClassifier
+    name: VAEConv
     shape_input:
         - 15
         - 1
@@ -242,10 +214,10 @@ training:
 visualization:
     kwargs_unnormalize:
         mean:
-            - 0.5082
-            - 0.422
-            - 0.3764
+            - 0.5084
+            - 0.4224
+            - 0.3768
         std:
             - 0.3048
-            - 0.2823
-            - 0.2807
+            - 0.2824
+            - 0.2808

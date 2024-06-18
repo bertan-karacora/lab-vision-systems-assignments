@@ -7,103 +7,86 @@ import torchsummary
 from tqdm import tqdm
 
 import assignment.config as config
-import assignment.libs.utils_data as utils_data
-import assignment.measurement
+import assignment.libs.factory as factory
+import assignment.libs.utils_checkpoints as utils_checkpoints
 
 
 class Evaluator:
-    def __init__(self, name_exp, model):
-        self.criterion = None
+    def __init__(self, name_exp, name_checkpoint="best", quiet=False):
         self.dataloader_test = None
         self.dataset_test = None
         self.device = None
         self.log = None
         self.measurers = None
-        self.model = model
+        self.model = None
+        self.name_checkpoint = name_checkpoint
         self.name_exp = name_exp
         self.path_dir_exp = None
+        self.quiet = quiet
 
         self._init()
 
+    def __str__(self):
+        s = f"""Evaluator for experiment {self.name_exp}
+    Path: {self.path_dir_exp}
+    Dataset: {self.dataset_test}
+    Model: {self.model}
+    Measurers: {self.measurers}"""
+        return s
+
     def _init(self):
         self.path_dir_exp = Path(config._PATH_DIR_EXPS) / self.name_exp
-
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.log = {
-            "batches": {
-                "num_samples": [],
-                "loss": [],
-                "metrics": collections.defaultdict(list),
-            },
-            "total": {
-                "loss": None,
-                "metrics": {},
-            },
+            "test": {
+                "batches": {
+                    "num_samples": [],
+                    "metrics": collections.defaultdict(list),
+                },
+                "total": {
+                    "metrics": {},
+                },
+            }
         }
+        self.dataset_test, self.dataloader_test = factory.create_dataset_and_dataloader(split="test")
+        self.model = utils_checkpoints.load_model(self.path_dir_exp / "checkpoints" / f"{self.name_checkpoint}.pth")
+        self.measurers = factory.create_measurers()
 
-        self.init_dataloader()
-        self.init_criterion()
-        self.init_measurers()
+        self.print(self)
 
-    def init_dataloader(self):
-        print("Initializing dataloader...")
+    def print(self, s):
+        if not self.quiet:
+            print(s)
 
-        self.dataset_test, self.dataloader_test = utils_data.create_dataset_and_dataloader(split="test")
+    def log_batch(self, num_samples, output, targets):
+        self.log["test"]["batches"]["num_samples"] += [num_samples]
+        for measurer in self.measurers:
+            name_metric = type(measurer).__name__
+            metric = measurer(output, targets)
+            self.log["test"]["batches"]["metrics"][name_metric] += [metric]
 
-        print("Test dataset")
-        print(self.dataset_test)
+    def log_total(self, num_batches, num_samples):
+        nums_samples = np.asarray(self.log["test"]["batches"]["num_samples"][-num_batches:])
+        for name, metrics in self.log["test"]["batches"]["metrics"].items():
+            metrics_total = np.asarray(metrics[-num_batches:])
+            metric_total = np.sum(metrics_total * nums_samples) / num_samples
+            self.log["test"]["total"]["metrics"][name] = metric_total
 
-        print("Initializing dataloader finished")
-
-    def init_criterion(self):
-        print("Initializing criterion...")
-
-        class_criterion = getattr(torch.nn, config.CRITERION["name"])
-        self.criterion = class_criterion(**config.CRITERION["kwargs"])
-
-        print("Initializing criterion finished")
-
-    def init_measurers(self):
-        print("Initializing measurers...")
-
-        self.measurers = []
-        for measurer in config.MEASURERS:
-            class_measurer = getattr(assignment.measurement, measurer["name"])
-            self.measurers += [class_measurer(**measurer["kwargs"])]
-
-        print("Initializing measurers finished")
-
-    @torch.no_grad()
-    def evaluate(self, quiet=False):
-        print(torchsummary.summary(self.model, [config.MODEL["shape_input"]], verbose=0))
+    @torch.inference_mode()
+    def evaluate(self):
         self.model = self.model.to(self.device)
+        self.print(torchsummary.summary(self.model, [config.MODEL["shape_input"]], verbose=0))
 
-        num_batches = len(self.dataloader_test)
-        progress_bar = tqdm(self.dataloader_test, total=num_batches, disable=quiet)
+        progress_bar = tqdm(self.dataloader_test, total=len(self.dataloader_test), disable=self.quiet)
         for i, (features, targets) in enumerate(progress_bar, start=1):
-            self.log["batches"]["num_samples"] += [len(targets)]
-
             features = features.to(self.device)
             targets = targets.to(self.device)
+
             output = self.model(features)
 
-            loss = self.criterion(output, targets)
-            self.log["batches"]["loss"] += [loss.item()]
+            self.log_batch(len(targets), output, targets)
 
-            for measurer in self.measurers:
-                metric = measurer(output, targets)
-                self.log["batches"]["metrics"][type(measurer).__name__] += [metric]
+            if i % config.LOGGING["tqdm"]["frequency"] == 1 and not self.quiet:
+                progress_bar.set_description(f"Validating: Batch {i:03d}")
 
-            if i % config.FREQUENCY_LOG == 0 and not quiet:
-                progress_bar.set_description(f"Validating: Batch {i:03d} | Loss {loss.item():.5f}")
-
-        nums_samples = np.asarray(self.log["batches"]["num_samples"][-num_batches:])
-
-        losses = np.asarray(self.log["batches"]["loss"][-num_batches:])
-        loss_epoch = np.sum(losses * nums_samples) / len(self.dataset_test)
-        self.log["total"]["loss"] = loss_epoch
-
-        for name, metrics in self.log["batches"]["metrics"].items():
-            metrics_total = np.asarray(metrics[-num_batches:])
-            metric_total = np.sum(metrics_total * nums_samples) / len(self.dataset_test)
-            self.log["total"]["metrics"][name] = metric_total
+        self.log_total(num_batches=len(self.dataloader_test), num_samples=len(self.dataset_test))

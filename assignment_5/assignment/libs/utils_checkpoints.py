@@ -1,7 +1,6 @@
 import torch
 
-import assignment.config as config
-import assignment.libs.utils_import as utils_import
+import assignment.libs.factory as factory
 
 
 def save(trainer, epoch, name=None):
@@ -12,42 +11,42 @@ def save(trainer, epoch, name=None):
     torch.save(
         {
             "epoch": epoch,
-            "model_state_dict": trainer.model.state_dict(),
-            "optimizer_state_dict": trainer.optimizer.state_dict(),
-            "scheduler_state_dict": "" if trainer.scheduler is None else trainer.scheduler.state_dict(),
+            "state_dict_model": trainer.model.state_dict(),
+            "state_dict_optimizer": trainer.optimizer.state_dict(),
+            "state_dict_scheduler": "" if trainer.scheduler is None else trainer.scheduler.state_dict(),
         },
         path_checkpoint,
     )
 
 
 def load(path):
-    class_model = utils_import.import_model(config.MODEL["name"])
-    model = class_model(**config.MODEL["kwargs"]).eval()
+    checkpoint = torch.load(path)
 
-    if "transfer" in config.MODEL:
-        for dict_layer in config.MODEL["transfer"]["layers"]:
-            dict_model_layer = dict_layer["model"]
-            class_model_layer = utils_import.import_model(dict_model_layer["name"])
-            model_layer = class_model_layer(**dict_model_layer["kwargs"]).eval()
+    epoch = None
+    if "epoch" in checkpoint:
+        epoch = checkpoint["epoch"]
 
-            setattr(model, dict_layer["name"], model_layer)
+    model = None
+    if "state_dict_model" in checkpoint:
+        model = factory.create_model()
+        model.load_state_dict(checkpoint["state_dict_model"])
 
-    class_optimizer = getattr(torch.optim, config.TRAINING["optimizer"]["name"])
-    optimizer = class_optimizer(model.parameters(), **config.TRAINING["optimizer"]["kwargs"])
+    optimizer = None
+    if "state_dict_optimizer" in checkpoint and model is not None:
+        optimizer = factory.create_optimizer(model.parameters())
+        optimizer.load_state_dict(checkpoint["state_dict_optimizer"])
 
     scheduler = None
-    if "scheduler" in config.TRAINING:
-        class_scheduler = getattr(torch.optim.lr_scheduler, config.TRAINING["scheduler"]["name"])
-        scheduler = class_scheduler(optimizer, **config.TRAINING["scheduler"]["kwargs"])
-
-    checkpoint = torch.load(path)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    epoch = checkpoint["epoch"]
-
-    if optimizer is not None:
-        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-
-    if scheduler is not None:
-        scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+    if "state_dict_scheduler" in checkpoint and optimizer is not None:
+        scheduler = factory.create_scheduler(optimizer)
+        scheduler.load_state_dict(checkpoint["state_dict_scheduler"])
 
     return epoch, model, optimizer, scheduler
+
+
+def load_model(path):
+    checkpoint = torch.load(path)
+
+    model = factory.create_model()
+    model.load_state_dict(checkpoint["model_state_dict"])
+    return model

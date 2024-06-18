@@ -8,15 +8,13 @@ import torchsummary
 from tqdm import tqdm
 
 import assignment.config as config
+import assignment.libs.factory as factory
 import assignment.libs.utils_checkpoints as utils_checkpoints
-import assignment.libs.utils_data as utils_data
-import assignment.libs.utils_import as utils_import
-import assignment.measurement
+import assignment.metrics
 
 
 class Trainer:
     def __init__(self, name_exp, quiet=False):
-        self.callbacks = None
         self.criterion = None
         self.dataloader_training = None
         self.dataloader_validation = None
@@ -31,15 +29,25 @@ class Trainer:
         self.path_dir_exp = None
         self.scheduler = None
         self.quiet = quiet
-        self.writer = None
+        self.writer_tensorboard = None
 
         self._init()
 
+    def __str__(self):
+        s = f"""Trainer for experiment {self.name_exp}
+    Path: {self.path_dir_exp}
+    Dataset (training): {self.dataset_training}
+    Dataset (validation): {self.dataset_validation}
+    Model: {self.model}
+    Criterion: {self.criterion}
+    Optimizer: {self.optimizer}
+    Measurers: {self.measurers}"""
+        return s
+
     def _init(self):
         self.path_dir_exp = Path(config._PATH_DIR_EXPS) / self.name_exp
-        self.writer = SummaryWriter(self.path_dir_exp / "tensorboard")
-
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.writer_tensorboard = SummaryWriter(self.path_dir_exp / "tensorboard")
         self.log = {
             "training": {
                 "batches": {
@@ -67,7 +75,11 @@ class Trainer:
             },
         }
 
-        self.setup_dataloaders()
+        self.dataset_training, self.dataloader_training = factory.create_dataset_and_dataloader(split="training")
+        self.dataset_validation, self.dataloader_validation = factory.create_dataset_and_dataloader(split="validation")
+        self.model = utils_checkpoints.load_model(self.path_dir_exp / "checkpoints" / f"{self.name_checkpoint}.pth")
+        self.measurers = factory.create_measurers()
+
         self.setup_model()
         self.setup_optimizer()
         self.setup_criterion()
@@ -77,22 +89,7 @@ class Trainer:
         if not self.quiet:
             print(s)
 
-    def setup_dataloaders(self):
-        self.print("Setting up dataloaders...")
-
-        self.dataset_training, self.dataloader_training = utils_data.create_dataset_and_dataloader(split="training")
-        self.dataset_validation, self.dataloader_validation = utils_data.create_dataset_and_dataloader(split="validation")
-
-        self.print("Train dataset")
-        self.print(self.dataset_training)
-        self.print("Validate dataset")
-        self.print(self.dataset_validation)
-
-        self.print("Setting up dataloaders finished")
-
     def setup_model(self):
-        self.print("Setting up model...")
-
         class_model = utils_import.import_model(config.MODEL["name"])
         self.model = class_model(**config.MODEL["kwargs"]).eval()
 
@@ -113,8 +110,6 @@ class Trainer:
         self.print("Model")
         self.print(self.model)
         self.print(torchsummary.summary(self.model, [config.MODEL["shape_input"]], verbose=0))
-
-        self.print("Setting up model finished")
 
     def setup_optimizer(self):
         self.print("Setting up optimizer...")
@@ -142,7 +137,7 @@ class Trainer:
 
         self.measurers = []
         for measurer in config.MEASURERS:
-            class_measurer = getattr(assignment.measurement, measurer["name"])
+            class_measurer = getattr(assignment.metrics, measurer["name"])
             self.measurers += [class_measurer(**measurer["kwargs"])]
 
         self.print("Setting up measurers finished")
@@ -156,8 +151,8 @@ class Trainer:
             name_metric = type(measurer).__name__
             metric = measurer(output, targets)
             self.log[pass_loop]["batches"]["metrics"][name_metric] += [metric]
-            self.writer.add_scalar(f"{pass_loop}|Batches|{name_metric}", metric, iteration)
-        self.writer.add_scalar(f"{pass_loop}|Batches|Loss", loss, iteration)
+            self.writer_tensorboard.add_scalar(f"{pass_loop}|Batches|{name_metric}", metric, iteration)
+        self.writer_tensorboard.add_scalar(f"{pass_loop}|Batches|Loss", loss, iteration)
 
     def log_epoch(self, pass_loop, epoch, num_samples, num_batches):
         nums_samples = np.asarray(self.log[pass_loop]["batches"]["num_samples"][-num_batches:])
@@ -170,8 +165,8 @@ class Trainer:
             metrics_epoch = np.asarray(metrics[-num_batches:])
             metric_epoch = np.sum(metrics_epoch * nums_samples) / num_samples
             self.log[pass_loop]["epochs"]["metrics"][name] += [metric_epoch]
-            self.writer.add_scalar(f"{pass_loop}|Epochs|{name}", metric_epoch, epoch)
-        self.writer.add_scalar(f"{pass_loop}|Epochs|Loss", loss_epoch, epoch)
+            self.writer_tensorboard.add_scalar(f"{pass_loop}|Epochs|{name}", metric_epoch, epoch)
+        self.writer_tensorboard.add_scalar(f"{pass_loop}|Epochs|Loss", loss_epoch, epoch)
 
     @torch.no_grad()
     def validate_epoch(self, epoch):
