@@ -1,13 +1,11 @@
 from pathlib import Path
 
-import sklearn.model_selection as model_selection
 import torch
 
 import assignment.config as config
 import assignment.libs.collations as collations
 import assignment.libs.utils_import as utils_import
-from assignment.transforms.unnormalize import Unnormalize
-import assignment.metrics
+import assignment.libs.utils_model as utils_model
 
 
 def create_transform(dict_transform):
@@ -84,7 +82,11 @@ def create_model():
     class_model = utils_import.import_model(config.MODEL["name"])
     model = class_model(**config.MODEL["kwargs"]).eval()
 
+    # TODO: This is bad.
     if "transfer" in config.MODEL:
+        if "epochs_freeze" in config.MODEL["transfer"] and config.MODEL["transfer"]["epochs_freeze"] > 0:
+            model = utils_model.freeze(model)
+
         for dict_layer in config.MODEL["transfer"]["layers"]:
             dict_model_layer = dict_layer["model"]
             class_model_layer = utils_import.import_model(dict_model_layer["name"])
@@ -95,11 +97,41 @@ def create_model():
     return model
 
 
-def create_measurers():
+def create_criterion(dict_criterion=None):
+    dict_criterion = dict_criterion or config.CRITERION
+
+    class_criterion = utils_import.import_criterion(dict_criterion["name"])
+    if dict_criterion["name"] in ["SumWeighted"]:
+        criterion = class_criterion(
+            modules=create_criteria(dict_criterion["modules"]),
+            **dict_criterion["kwargs"],
+        )
+    else:
+        criterion = class_criterion(**dict_criterion["kwargs"])
+
+    return criterion
+
+
+def create_criteria(dicts_criteria=None):
+    criteria = []
+    for dict_criterion in dicts_criteria:
+        criterion = create_criterion(dict_criterion)
+        criteria += [criterion]
+    return criteria
+
+
+def create_measurer(dict_measurer):
+    class_measurer = utils_import.import_metric(dict_measurer["name"])
+    measurer = class_measurer(**dict_measurer["kwargs"])
+    return measurer
+
+
+def create_measurers(split):
     measurers = []
-    for measurer in config.MEASURERS:
-        class_measurer = getattr(assignment.metrics, measurer["name"])
-        measurers += [class_measurer(**measurer["kwargs"])]
+    for dict_measurer in config.MEASURERS[split]:
+        measurer = create_measurer(dict_measurer)
+        measurers += [measurer]
+    return measurers
 
 
 def create_optimizer(params):
@@ -108,7 +140,25 @@ def create_optimizer(params):
     return optimizer
 
 
-def create_scheduler(optimizer):
-    class_scheduler = getattr(torch.optim.lr_scheduler, config.TRAINING["scheduler"]["name"])
-    scheduler = class_scheduler(optimizer, **config.TRAINING["scheduler"]["kwargs"])
+def create_scheduler(optimizer, dict_scheduler=None):
+    dict_scheduler = dict_scheduler or config.TRAINING["scheduler"]
+
+    class_scheduler = getattr(torch.optim.lr_scheduler, dict_scheduler["name"])
+    if dict_scheduler["name"] in ["SequentialLR"]:
+        scheduler = class_scheduler(
+            optimizer=optimizer,
+            schedulers=create_schedulers(optimizer, dict_scheduler["schedulers"]),
+            **dict_scheduler["kwargs"],
+        )
+    else:
+        scheduler = class_scheduler(optimizer, **dict_scheduler["kwargs"])
+
     return scheduler
+
+
+def create_schedulers(optimizer, dicts_schedulers):
+    schedulers = []
+    for dict_scheduler in dicts_schedulers:
+        scheduler = create_scheduler(optimizer, dict_scheduler)
+        schedulers += [scheduler]
+    return schedulers

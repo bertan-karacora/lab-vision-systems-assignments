@@ -3,7 +3,7 @@ import argparse
 import torch
 
 import assignment.config as config
-import assignment.libs.utils_data as utils_data
+import assignment.libs.factory as factory
 
 
 def parse_args():
@@ -44,7 +44,7 @@ def compute_mean_and_std(name_config, split="training"):
 
     config.set_config_preset(name_config)
 
-    dataset_all, dataloader_all = utils_data.create_dataset_and_dataloader(split=split)
+    dataset_all, dataloader_all = factory.create_dataset_and_dataloader(split=split)
 
     print("Dataset")
     print(dataset_all)

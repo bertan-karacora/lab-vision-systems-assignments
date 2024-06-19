@@ -3,7 +3,7 @@ import operator
 import torch
 
 
-class Add(torch.nn.Module):
+class Sum(torch.nn.Module):
     # Based on parts of torch.nn.ModuleList
     def __init__(self, *args):
         super().__init__()
@@ -46,7 +46,7 @@ class Add(torch.nn.Module):
         return result
 
 
-class Multiply(torch.nn.Module):
+class Product(torch.nn.Module):
     # Based on parts of torch.nn.ModuleList
     def __init__(self, *args):
         super().__init__()

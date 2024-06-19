@@ -1,0 +1,342 @@
+criterion:
+    kwargs:
+        weights:
+            - 1.0
+            - 0.01
+    modules:
+        -   kwargs:
+                key: prediction
+                kwargs_module:
+                    beta: 1.0
+                name_module: SmoothL1Loss
+            name: Select
+        -   kwargs: {}
+            name: ELBOGaussian
+    name: SumWeighted
+data:
+    test:
+        dataloader:
+            kwargs:
+                batch_size: 128
+                pin_memory: true
+                shuffle: false
+        dataset:
+            kwargs:
+                types_target_tv: []
+                use_download: false
+                use_features_as_target: true
+            mean:
+                - 0.5084
+                - 0.4224
+                - 0.3768
+            name: CelebA
+            std:
+                - 0.3048
+                - 0.2824
+                - 0.2808
+            transform:
+                features:
+                    kwargs: {}
+                    name: Compose
+                    transforms:
+                        -   kwargs: {}
+                            name: PILToTensor
+                        -   kwargs:
+                                size:
+                                    - 178
+                                    - 178
+                            name: CenterCrop
+                        -   kwargs:
+                                size:
+                                    - 128
+                                    - 128
+                            name: Resize
+                        -   kwargs:
+                                dtype: float32
+                                scale: true
+                            name: ToDtype
+                        -   kwargs:
+                                mean:
+                                    - 0.5084
+                                    - 0.4224
+                                    - 0.3768
+                                std:
+                                    - 0.3048
+                                    - 0.2824
+                                    - 0.2808
+                            name: Normalize
+                target: null
+    training:
+        dataloader:
+            kwargs:
+                batch_size: 128
+                pin_memory: true
+                shuffle: true
+        dataset:
+            kwargs:
+                types_target_tv: []
+                use_download: false
+                use_features_as_target: true
+            mean:
+                - 0.5084
+                - 0.4224
+                - 0.3768
+            name: CelebA
+            std:
+                - 0.3048
+                - 0.2824
+                - 0.2808
+            transform:
+                features:
+                    kwargs: {}
+                    name: Compose
+                    transforms:
+                        -   kwargs: {}
+                            name: PILToTensor
+                        -   kwargs:
+                                size:
+                                    - 178
+                                    - 178
+                            name: CenterCrop
+                        -   kwargs:
+                                size:
+                                    - 128
+                                    - 128
+                            name: Resize
+                        -   kwargs:
+                                dtype: float32
+                                scale: true
+                            name: ToDtype
+                        -   kwargs:
+                                mean:
+                                    - 0.5084
+                                    - 0.4224
+                                    - 0.3768
+                                std:
+                                    - 0.3048
+                                    - 0.2824
+                                    - 0.2808
+                            name: Normalize
+                target: null
+    validation:
+        dataloader:
+            kwargs:
+                batch_size: 128
+                pin_memory: true
+                shuffle: false
+        dataset:
+            kwargs:
+                types_target_tv: []
+                use_download: false
+                use_features_as_target: true
+            mean:
+                - 0.5084
+                - 0.4224
+                - 0.3768
+            name: CelebA
+            std:
+                - 0.3048
+                - 0.2824
+                - 0.2808
+            transform:
+                features:
+                    kwargs: {}
+                    name: Compose
+                    transforms:
+                        -   kwargs: {}
+                            name: PILToTensor
+                        -   kwargs:
+                                size:
+                                    - 178
+                                    - 178
+                            name: CenterCrop
+                        -   kwargs:
+                                size:
+                                    - 128
+                                    - 128
+                            name: Resize
+                        -   kwargs:
+                                dtype: float32
+                                scale: true
+                            name: ToDtype
+                        -   kwargs:
+                                mean:
+                                    - 0.5084
+                                    - 0.4224
+                                    - 0.3768
+                                std:
+                                    - 0.3048
+                                    - 0.2824
+                                    - 0.2808
+                            name: Normalize
+                target: null
+logging:
+    checkpoint:
+        frequency: 10
+    tensorboard:
+        frequency: 1
+    tqdm:
+        frequency: 10
+measurers:
+    test:
+        -   kwargs:
+                key: prediction
+                kwargs_module:
+                    beta: 1.0
+                name_module: SmoothL1Loss
+            name: Select
+        -   kwargs: {}
+            name: ELBOGaussian
+        -   kwargs:
+                key: prediction
+                kwargs_module:
+                    feature: 64
+                    kwargs_unnormalize:
+                        mean:
+                            - 0.5084
+                            - 0.4224
+                            - 0.3768
+                        std:
+                            - 0.3048
+                            - 0.2824
+                            - 0.2808
+                    normalize: true
+                    reset_real_features: false
+                    use_unnormalize: true
+                name_module: FrechetInceptionDistance
+            name: Select
+    training:
+        -   kwargs:
+                key: prediction
+                kwargs_module:
+                    beta: 1.0
+                name_module: SmoothL1Loss
+            name: Select
+        -   kwargs: {}
+            name: ELBOGaussian
+    validation:
+        -   kwargs:
+                key: prediction
+                kwargs_module:
+                    beta: 1.0
+                name_module: SmoothL1Loss
+            name: Select
+        -   kwargs: {}
+            name: ELBOGaussian
+        -   kwargs:
+                key: prediction
+                kwargs_module:
+                    feature: 64
+                    kwargs_unnormalize:
+                        mean:
+                            - 0.5084
+                            - 0.4224
+                            - 0.3768
+                        std:
+                            - 0.3048
+                            - 0.2824
+                            - 0.2808
+                    normalize: true
+                    reset_real_features: false
+                    use_unnormalize: true
+                name_module: FrechetInceptionDistance
+            name: Select
+model:
+    kwargs:
+        kwargs_decoder:
+            kwargs_block:
+                kwargs_conv:
+                    output_padding: 1
+                    padding: 1
+                    stride: 2
+                kwargs_pool: {}
+                name_layer_act: LeakyReLU
+                name_layer_norm: BatchNorm2d
+                name_layer_pool: null
+                shape_kernel_conv:
+                    - 3
+                    - 3
+                shape_kernel_pool: null
+            num_channels_out: 3
+            nums_channels_hidden:
+                - 512
+                - 256
+                - 128
+                - 64
+                - 32
+            shape_input:
+                - 1024
+                - 2
+                - 2
+        kwargs_encoder:
+            kwargs_block:
+                kwargs_conv:
+                    padding: 1
+                    stride: 2
+                kwargs_pool: {}
+                name_layer_act: LeakyReLU
+                name_layer_norm: BatchNorm2d
+                name_layer_pool: null
+                shape_kernel_conv:
+                    - 3
+                    - 3
+                shape_kernel_pool: null
+            num_channels_out: 1024
+            nums_channels_hidden:
+                - 32
+                - 64
+                - 128
+                - 256
+                - 512
+            shape_input:
+                - 3
+                - 128
+                - 128
+        kwargs_normalize:
+            mean:
+                - 0.5084
+                - 0.4224
+                - 0.3768
+            std:
+                - 0.3048
+                - 0.2824
+                - 0.2808
+        name_decoder: CNN2dDecoder
+        name_encoder: CNN2dEncoder
+        num_channels_latent: 64
+        num_channels_out_encode: 4096
+        shape_input_decoder:
+            - 1024
+            - 2
+            - 2
+        use_normalize: true
+    name: VAEGaussian
+    shape_input:
+        - 3
+        - 128
+        - 128
+training:
+    early_stopping:
+        patience: 10
+    num_epochs: 20
+    optimizer:
+        kwargs:
+            lr: 0.0003
+            weight_decay: 0.001
+        name: Adam
+    scheduler:
+        dynamic: null
+        kwargs:
+            milestones:
+                - 5
+        name: SequentialLR
+        schedulers:
+            -   kwargs:
+                    end_factor: 1.0
+                    start_factor: 0.333
+                    total_iters: 5
+                name: LinearLR
+            -   kwargs:
+                    gamma: 0.9
+                name: ExponentialLR
+    use_amp: true

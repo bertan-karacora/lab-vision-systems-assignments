@@ -1,24 +1,39 @@
 criterion:
-    -   kwargs:
-            beta: 1.0
-        name: SmoothL1Loss
-        weight: 1.0
-    -   kwargs: {}
-        name: ELBOGaussian
-        weight: 1e-3
+    kwargs:
+        weights:
+            - 1.0
+            - 0.001
+    modules:
+        -   kwargs:
+                key: prediction
+                kwargs_module:
+                    beta: 1.0
+                name_module: SmoothL1Loss
+            name: Select
+        -   kwargs: {}
+            name: ELBOGaussian
+    name: SumWeighted
 data:
     test:
         dataloader:
             kwargs:
-                batch_size: 64
+                batch_size: 128
                 pin_memory: true
                 shuffle: false
         dataset:
             kwargs:
                 types_target_tv: []
-                use_download: true
+                use_download: false
                 use_features_as_target: true
+            mean:
+                - 0.5084
+                - 0.4224
+                - 0.3768
             name: CelebA
+            std:
+                - 0.3048
+                - 0.2824
+                - 0.2808
             transform:
                 features:
                     kwargs: {}
@@ -54,15 +69,23 @@ data:
     training:
         dataloader:
             kwargs:
-                batch_size: 64
+                batch_size: 128
                 pin_memory: true
                 shuffle: true
         dataset:
             kwargs:
                 types_target_tv: []
-                use_download: true
+                use_download: false
                 use_features_as_target: true
+            mean:
+                - 0.5084
+                - 0.4224
+                - 0.3768
             name: CelebA
+            std:
+                - 0.3048
+                - 0.2824
+                - 0.2808
             transform:
                 features:
                     kwargs: {}
@@ -98,15 +121,23 @@ data:
     validation:
         dataloader:
             kwargs:
-                batch_size: 64
+                batch_size: 128
                 pin_memory: true
                 shuffle: false
         dataset:
             kwargs:
                 types_target_tv: []
-                use_download: true
+                use_download: false
                 use_features_as_target: true
+            mean:
+                - 0.5084
+                - 0.4224
+                - 0.3768
             name: CelebA
+            std:
+                - 0.3048
+                - 0.2824
+                - 0.2808
             transform:
                 features:
                     kwargs: {}
@@ -139,67 +170,107 @@ data:
                                     - 0.2808
                             name: Normalize
                 target: null
-frequency_checkpoint: 10
-frequency_log: 5
+logging:
+    checkpoint:
+        frequency: 10
+    tensorboard:
+        frequency: 1
+    tqdm:
+        frequency: 10
 measurers:
     -   kwargs:
-            beta: 1.0
-        name: SmoothL1Loss
-        weight: 1.0
+            key: prediction
+            kwargs_module:
+                beta: 1.0
+            name_module: SmoothL1Loss
+        name: Select
     -   kwargs: {}
         name: ELBOGaussian
-        weight: 1e-3
-    -   kwargs: {}
-        name: FrechetInceptionDistance
+    -   kwargs:
+            key: prediction
+            kwargs_module:
+                feature: 64
+                normalize: true
+                reset_real_features: false
+            name_module: FrechetInceptionDistance
+        name: Select
 model:
     kwargs:
-        kwargs_encoder:
-            kwargs_body:
+        kwargs_decoder:
+            kwargs_block:
                 kwargs_conv:
-                    padding: same
+                    output_padding: 1
+                    padding: 1
+                    stride: 2
                 kwargs_pool: {}
                 name_layer_act: LeakyReLU
                 name_layer_norm: BatchNorm2d
-                name_layer_pool: MaxPool2d
+                name_layer_pool: null
                 shape_kernel_conv:
-                    - 5
-                    - 5
-                shape_kernel_pool:
-                    - 2
-                    - 2
-            num_channels_out: 512
-            nums_channels_hidden_body:
+                    - 3
+                    - 3
+                shape_kernel_pool: null
+            num_channels_out: 3
+            nums_channels_hidden:
+                - 512
+                - 256
+                - 128
+                - 64
+                - 32
+            shape_input:
+                - 1024
+                - 2
+                - 2
+        kwargs_encoder:
+            kwargs_block:
+                kwargs_conv:
+                    padding: 1
+                    stride: 2
+                kwargs_pool: {}
+                name_layer_act: LeakyReLU
+                name_layer_norm: BatchNorm2d
+                name_layer_pool: null
+                shape_kernel_conv:
+                    - 3
+                    - 3
+                shape_kernel_pool: null
+            num_channels_out: 1024
+            nums_channels_hidden:
+                - 32
                 - 64
                 - 128
                 - 256
                 - 512
             shape_input:
-                - 1
-                - 64
-                - 64
-        kwargs_head:
-            name_layer_act: LeakyReLU
-            name_layer_norm: BatchNorm1d
-            num_channels_in: 512
-            num_channels_out: 6
-            nums_channels_hidden:
-                - 256
-            prob_dropout: 0.1
-        kwargs_rnn:
-            name_func_init: kaiming_uniform_
-            num_cells: 5
-            num_channels_in: 512
-            num_channels_out: 512
+                - 3
+                - 128
+                - 128
+        kwargs_normalize:
+            mean:
+                - 0.5084
+                - 0.4224
+                - 0.3768
+            std:
+                - 0.3048
+                - 0.2824
+                - 0.2808
+        name_decoder: CNN2dDecoder
         name_encoder: CNN2dEncoder
-        name_head: MLP
-        name_rnn: LSTM
-    name: VAEConv
+        num_channels_latent: 128
+        num_channels_out_encode: 4096
+        shape_input_decoder:
+            - 1024
+            - 2
+            - 2
+        use_normalize: true
+    name: VAEGaussian
     shape_input:
-        - 15
-        - 1
-        - 64
-        - 64
+        - 3
+        - 128
+        - 128
 training:
+    early_stopping:
+        patience: 20
     num_epochs: 50
     optimizer:
         kwargs:
@@ -207,17 +278,21 @@ training:
             weight_decay: 0.001
         name: Adam
     scheduler:
+        dynamic: null
         kwargs:
-            factor: 0.5
-            patience: 5
-        name: ReduceLROnPlateau
-visualization:
-    kwargs_unnormalize:
-        mean:
-            - 0.5084
-            - 0.4224
-            - 0.3768
-        std:
-            - 0.3048
-            - 0.2824
-            - 0.2808
+            milestones:
+                - 5
+        name: SequentialLR
+        schedulers:
+            -   kwargs:
+                    end_factor: 1.0
+                    start_factor: 0.333
+                    total_iters: 5
+                name: LinearLR
+            -   kwargs:
+                    gamma: 0.1
+                    milestones:
+                        - 20
+                        - 40
+                name: MultiStepLR
+    use_amp: true

@@ -1,5 +1,6 @@
 import torch
 
+import assignment.config as config
 import assignment.libs.factory as factory
 
 
@@ -13,7 +14,8 @@ def save(trainer, epoch, name=None):
             "epoch": epoch,
             "state_dict_model": trainer.model.state_dict(),
             "state_dict_optimizer": trainer.optimizer.state_dict(),
-            "state_dict_scheduler": "" if trainer.scheduler is None else trainer.scheduler.state_dict(),
+            "state_dict_scaler": trainer.scaler.state_dict() if trainer.scaler is not None else "",
+            "state_dict_scheduler": trainer.scheduler.state_dict() if trainer.scheduler is not None else "",
         },
         path_checkpoint,
     )
@@ -36,17 +38,22 @@ def load(path):
         optimizer = factory.create_optimizer(model.parameters())
         optimizer.load_state_dict(checkpoint["state_dict_optimizer"])
 
+    scaler = None
+    if "state_dict_scaler" in checkpoint:
+        scaler = torch.cuda.amp.GradScaler(enabled=config.TRAINING["use_amp"])
+        scaler.load_state_dict(checkpoint["state_dict_scaler"])
+
     scheduler = None
     if "state_dict_scheduler" in checkpoint and optimizer is not None:
         scheduler = factory.create_scheduler(optimizer)
         scheduler.load_state_dict(checkpoint["state_dict_scheduler"])
 
-    return epoch, model, optimizer, scheduler
+    return epoch, model, optimizer, scaler, scheduler
 
 
 def load_model(path):
     checkpoint = torch.load(path)
 
     model = factory.create_model()
-    model.load_state_dict(checkpoint["model_state_dict"])
+    model.load_state_dict(checkpoint["state_dict_model"])
     return model

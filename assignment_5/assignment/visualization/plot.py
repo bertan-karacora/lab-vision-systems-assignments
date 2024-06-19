@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sbn
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 
 import assignment.libs.utils_visualization as utils_visualization
 
@@ -33,7 +35,8 @@ def plot_loss(log, path_save=None):
 
         ax.plot(epochs_continuous, loss_training, alpha=0.5)
         ax.plot(epochs_continuous, losses_training_smoothed, label="Loss (training)")
-        ax.plot(log["validation"]["epochs"]["loss"], label="Loss (validation)")
+        loss_validation = log["validation"]["epochs"]["loss"]
+        ax.plot(loss_validation, label=f"Loss (validation) [Min: {np.min(loss_validation):.3f} @ {np.argmin(loss_validation)}]")
 
         ax.legend(fontsize=9)
 
@@ -80,7 +83,10 @@ def plot_metrics(log, path_save=None):
 
         for name, metrics in log["validation"]["epochs"]["metrics"].items():
             metrics_validation = np.asarray(metrics)
-            ax.plot(metrics_validation, label=f"{name.capitalize()} (validation)")
+            ax.plot(
+                metrics_validation,
+                label=f"{name.capitalize()} (validation) [Min: {np.min(metrics_validation):.3f} @ {np.argmin(metrics_validation)} | Max: {np.max(metrics_validation):.3f} @ {np.argmax(metrics_validation)}]",
+            )
 
         ax.legend(fontsize=9)
 
@@ -89,6 +95,96 @@ def plot_metrics(log, path_save=None):
 
     fig.add_subplot(3, 1, 2)
     subplot_metrics(use_logscale=True)
+
+    plt.tight_layout()
+    if path_save:
+        plt.savefig(path_save)
+    plt.show()
+
+
+def plot_metric(log, name_metric, path_save=None):
+    din_a4 = np.array([210, 297]) / 25.4
+    fig = plt.figure(figsize=din_a4)
+
+    def subplot_metric(use_logscale=False):
+        ax = plt.gca()
+
+        ax.set_title(f"Training progress ({'logscale' if use_logscale else 'linearscale'})", fontsize=9)
+        ax.set_xlabel("Epoch", fontsize=9)
+        ax.set_ylabel("Metric", fontsize=9)
+        ax.tick_params(axis="both", which="major", labelsize=9)
+        ax.tick_params(axis="both", which="minor", labelsize=8)
+        ax.grid(alpha=0.4)
+        if use_logscale:
+            ax.set_yscale("log")
+
+        epochs_training = np.asarray(log["training"]["batches"]["epoch"])
+        nums_samples_training = np.asarray(log["training"]["batches"]["num_samples"])
+        epochs_continuous = utils_visualization.create_epochs_continuous(epochs_training, nums_samples_training)
+
+        if name_metric in log["training"]["batches"]["metrics"]:
+            metrics = log["training"]["batches"]["metrics"][name_metric]
+            metrics_training = np.asarray(metrics)
+
+            num_iterations_per_epoch = len(epochs_training[epochs_training == epochs_training[0]])
+            metrics_training_smoothed = utils_visualization.smooth(metrics_training, k=int(0.5 * num_iterations_per_epoch))
+
+            ax.plot(epochs_continuous, metrics_training, alpha=0.5)
+            ax.plot(epochs_continuous, metrics_training_smoothed, label=f"{name_metric.capitalize()} (training)")
+
+        if name_metric in log["validation"]["batches"]["metrics"]:
+            metrics = log["validation"]["epochs"]["metrics"][name_metric]
+            metrics_validation = np.asarray(metrics)
+            ax.plot(
+                metrics_validation,
+                label=f"{name_metric.capitalize()} (validation) [Min: {np.min(metrics_validation):.3f} @ {np.argmin(metrics_validation)} | Max: {np.max(metrics_validation):.3f} @ {np.argmax(metrics_validation)}]",
+            )
+
+        ax.legend(fontsize=9)
+
+    fig.add_subplot(3, 1, 1)
+    subplot_metric()
+
+    fig.add_subplot(3, 1, 2)
+    subplot_metric(use_logscale=True)
+
+    plt.tight_layout()
+    if path_save:
+        plt.savefig(path_save)
+    plt.show()
+
+
+def plot_metrics_all_separate(log, path_plots=None):
+    for name_metric in log["validation"]["batches"]["metrics"].keys():
+        path_save = path_plots / f"Metrics_{name_metric}.png"
+        plot_metric(log, name_metric, path_save=path_save)
+
+
+def plot_learning_rate(log, path_save=None):
+    din_a4 = np.array([210, 297]) / 25.4
+    fig = plt.figure(figsize=din_a4)
+
+    def subplot_learning_rate():
+        ax = plt.gca()
+
+        ax.set_title(f"Learning rate during training", fontsize=9)
+        ax.set_xlabel("Epoch", fontsize=9)
+        ax.set_ylabel("Learning rate", fontsize=9)
+        ax.tick_params(axis="both", which="major", labelsize=9)
+        ax.tick_params(axis="both", which="minor", labelsize=8)
+        ax.grid(alpha=0.4)
+
+        epochs_training = np.asarray(log["training"]["batches"]["epoch"])
+        nums_samples_training = np.asarray(log["training"]["batches"]["num_samples"])
+        epochs_continuous = utils_visualization.create_epochs_continuous(epochs_training, nums_samples_training)
+
+        learning_rate_training = np.asarray(log["training"]["batches"]["learning_rate"])
+        ax.plot(epochs_continuous, learning_rate_training, label="Learning rate (training)")
+
+        ax.legend(fontsize=9)
+
+    fig.add_subplot(3, 1, 1)
+    subplot_learning_rate()
 
     plt.tight_layout()
     if path_save:
@@ -146,3 +242,62 @@ def plot_confusion(confusion, labelset):
 
 #     plt.tight_layout()
 #     plt.show()
+
+
+def plot_projection_pca(features_flat, num_points=2000, path_save=None):
+    din_a4 = np.array([210, 297]) / 25.4
+    fig = plt.figure(figsize=din_a4)
+
+    def subplot_projection(points):
+        ax = plt.gca()
+
+        ax.set_title(f"Projection via PCA", fontsize=9)
+        ax.set_xlabel(r"$p_1$", fontsize=9)
+        ax.set_ylabel(r"$p_2$", fontsize=9)
+        ax.tick_params(axis="both", which="major", labelsize=9)
+        ax.tick_params(axis="both", which="minor", labelsize=8)
+        ax.grid(alpha=0.4)
+
+        ax.scatter(points[:, 0], points[:, 1])
+
+        ax.legend(fontsize=9)
+
+    points = PCA(n_components=2).fit_transform(features_flat)
+    points = points[:num_points]
+
+    fig.add_subplot(2, 1, 1)
+    subplot_projection(points)
+
+    plt.tight_layout()
+    if path_save:
+        plt.savefig(path_save)
+    plt.show()
+
+
+def plot_projection_tsne(features_flat, num_points=2000, path_save=None):
+    din_a4 = np.array([210, 297]) / 25.4
+    fig = plt.figure(figsize=din_a4)
+
+    def subplot_projection(points):
+        ax = plt.gca()
+
+        ax.set_title(f"Projection via T-SNE", fontsize=9)
+        ax.set_xlabel(r"$t_1$", fontsize=9)
+        ax.set_ylabel(r"$t_2$", fontsize=9)
+        ax.tick_params(axis="both", which="major", labelsize=9)
+        ax.tick_params(axis="both", which="minor", labelsize=8)
+        ax.grid(alpha=0.4)
+
+        ax.scatter(points[:, 0], points[:, 1])
+
+        ax.legend(fontsize=9)
+
+    points = TSNE(n_components=2).fit_transform(features_flat[:num_points])
+
+    fig.add_subplot(2, 1, 1)
+    subplot_projection(points)
+
+    plt.tight_layout()
+    if path_save:
+        plt.savefig(path_save)
+    plt.show()

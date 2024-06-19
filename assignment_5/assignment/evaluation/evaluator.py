@@ -50,9 +50,10 @@ class Evaluator:
         }
         self.dataset_test, self.dataloader_test = factory.create_dataset_and_dataloader(split="test")
         self.model = utils_checkpoints.load_model(self.path_dir_exp / "checkpoints" / f"{self.name_checkpoint}.pth")
-        self.measurers = factory.create_measurers()
+        self.measurers = factory.create_measurers(split="test")
 
         self.print(self)
+        self.print(torchsummary.summary(self.model, [config.MODEL["shape_input"]], verbose=0))
 
     def print(self, s):
         if not self.quiet:
@@ -61,9 +62,9 @@ class Evaluator:
     def log_batch(self, num_samples, output, targets):
         self.log["test"]["batches"]["num_samples"] += [num_samples]
         for measurer in self.measurers:
-            name_metric = type(measurer).__name__
+            name_metric = measurer.name_module if hasattr(measurer, "name_module") else type(measurer).__name__
             metric = measurer(output, targets)
-            self.log["test"]["batches"]["metrics"][name_metric] += [metric]
+            self.log["test"]["batches"]["metrics"][name_metric] += [metric.item()]
 
     def log_total(self, num_batches, num_samples):
         nums_samples = np.asarray(self.log["test"]["batches"]["num_samples"][-num_batches:])
@@ -74,8 +75,11 @@ class Evaluator:
 
     @torch.inference_mode()
     def evaluate(self):
+        self.print("Evaluation ...")
+
         self.model = self.model.to(self.device)
-        self.print(torchsummary.summary(self.model, [config.MODEL["shape_input"]], verbose=0))
+        for i in range(len(self.measurers)):
+            self.measurers[i] = self.measurers[i].to(self.device)
 
         progress_bar = tqdm(self.dataloader_test, total=len(self.dataloader_test), disable=self.quiet)
         for i, (features, targets) in enumerate(progress_bar, start=1):
@@ -85,8 +89,9 @@ class Evaluator:
             output = self.model(features)
 
             self.log_batch(len(targets), output, targets)
-
-            if i % config.LOGGING["tqdm"]["frequency"] == 1 and not self.quiet:
+            if i % config.LOGGING["tqdm"]["frequency"] == 0 and not self.quiet:
                 progress_bar.set_description(f"Validating: Batch {i:03d}")
 
         self.log_total(num_batches=len(self.dataloader_test), num_samples=len(self.dataset_test))
+
+        self.print("Evaluation finished")

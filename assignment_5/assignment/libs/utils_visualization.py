@@ -22,7 +22,7 @@ def get_dimensions(images, figsize):
     # Assume same shape for all images
     image = images[0]
     aspect_images = image.shape[1] / image.shape[0]
-    aspect_figure = figsize[0] / figsize[1]
+    aspect_figure = figsize[1] / figsize[0]
 
     num_subplots = len(images)
     num_cols = max(int(np.sqrt(num_subplots * aspect_figure / aspect_images)), 1)

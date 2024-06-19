@@ -40,6 +40,41 @@ def visualize_images(images, labels=None, indices=None, path_save=None):
     plt.show()
 
 
+def visualize_images_pairs(images1, images2, labels=None, indices=None, path_save=None):
+    din_a4 = np.array([210, 297]) / 25.4
+    fig = plt.figure(figsize=din_a4)
+
+    def subplot_image(image, i):
+        ax = plt.gca()
+
+        if labels is not None or indices is not None:
+            title = ""
+            if indices is not None:
+                title += rf"#${indices[i]}$"
+            if indices is not None and labels is not None:
+                title += " | "
+            if labels is not None:
+                title += rf"label: {labels[i]}"
+            ax.set_title(title, fontsize=9)
+        ax.set_axis_off()
+
+        image_vis = (np.clip(image, 0.0, 1.0) * 255).astype(np.uint8)
+        ax.imshow(image_vis, cmap="gray" if image.shape[-1] == 1 else None)
+
+    images = torch.concat((images1, images2), dim=-1)
+    images = images.numpy().transpose((0, 2, 3, 1))
+
+    num_rows, num_cols = utils_visualization.get_dimensions(images, figsize=fig.get_size_inches())
+    for i, image in enumerate(images):
+        fig.add_subplot(num_rows, num_cols, i + 1)
+        subplot_image(image, i)
+
+    plt.tight_layout()
+    if path_save:
+        plt.savefig(path_save)
+    plt.show()
+
+
 def visualize_kernels(kernels, channel=0):
     din_a4 = np.array([210, 297]) / 25.4
     fig = plt.figure(figsize=din_a4)

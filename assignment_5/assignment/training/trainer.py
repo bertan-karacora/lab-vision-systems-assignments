@@ -10,7 +10,6 @@ from tqdm import tqdm
 import assignment.config as config
 import assignment.libs.factory as factory
 import assignment.libs.utils_checkpoints as utils_checkpoints
-import assignment.metrics
 
 
 class Trainer:
@@ -22,11 +21,13 @@ class Trainer:
         self.dataset_validation = None
         self.device = None
         self.log = None
-        self.measurers = None
+        self.measurers_training = None
+        self.measurers_validation = None
         self.model = None
         self.name_exp = name_exp
         self.optimizer = None
         self.path_dir_exp = None
+        self.scaler = None
         self.scheduler = None
         self.quiet = quiet
         self.writer_tensorboard = None
@@ -41,22 +42,27 @@ class Trainer:
     Model: {self.model}
     Criterion: {self.criterion}
     Optimizer: {self.optimizer}
-    Measurers: {self.measurers}"""
+    Scheduler: {self.scheduler}
+    Measurers (training): {self.measurers_training}
+    Measurers (validation): {self.measurers_validation}"""
         return s
 
     def _init(self):
         self.path_dir_exp = Path(config._PATH_DIR_EXPS) / self.name_exp
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.writer_tensorboard = SummaryWriter(self.path_dir_exp / "tensorboard")
+        self.scaler = torch.cuda.amp.GradScaler(enabled=config.TRAINING["use_amp"])
         self.log = {
             "training": {
                 "batches": {
                     "epoch": [],
                     "num_samples": [],
+                    "learning_rate": [],
                     "loss": [],
                     "metrics": collections.defaultdict(list),
                 },
                 "epochs": {
+                    "learning_rate": [],
                     "loss": [],
                     "metrics": collections.defaultdict(list),
                 },
@@ -65,95 +71,50 @@ class Trainer:
                 "batches": {
                     "epoch": [],
                     "num_samples": [],
+                    "learning_rate": [],
                     "loss": [],
                     "metrics": collections.defaultdict(list),
                 },
                 "epochs": {
+                    "learning_rate": [],
                     "loss": [],
                     "metrics": collections.defaultdict(list),
                 },
             },
         }
-
         self.dataset_training, self.dataloader_training = factory.create_dataset_and_dataloader(split="training")
         self.dataset_validation, self.dataloader_validation = factory.create_dataset_and_dataloader(split="validation")
-        self.model = utils_checkpoints.load_model(self.path_dir_exp / "checkpoints" / f"{self.name_checkpoint}.pth")
-        self.measurers = factory.create_measurers()
+        self.model = factory.create_model()
+        self.criterion = factory.create_criterion()
+        self.optimizer = factory.create_optimizer(self.model.parameters())
+        if "scheduler" in config.TRAINING:
+            self.scheduler = factory.create_scheduler(self.optimizer)
+        self.measurers_training = factory.create_measurers(split="training")
+        self.measurers_validation = factory.create_measurers(split="validation")
 
-        self.setup_model()
-        self.setup_optimizer()
-        self.setup_criterion()
-        self.setup_measurers()
+        self.print(self)
+        self.print(torchsummary.summary(self.model, [config.MODEL["shape_input"]], verbose=0))
 
     def print(self, s):
         if not self.quiet:
             print(s)
 
-    def setup_model(self):
-        class_model = utils_import.import_model(config.MODEL["name"])
-        self.model = class_model(**config.MODEL["kwargs"]).eval()
-
-        if "transfer" in config.MODEL:
-            # Won't stay like this. Assume we start with epoch 0 for now.
-            if "epochs_freeze" in config.MODEL["transfer"] and config.MODEL["transfer"]["epochs_freeze"] > 0:
-                print("Freezing body params")
-                for param in self.model.parameters():
-                    param.requires_grad = False
-
-            for dict_layer in config.MODEL["transfer"]["layers"]:
-                dict_model_layer = dict_layer["model"]
-                class_model_layer = utils_import.import_model(dict_model_layer["name"])
-                model_layer = class_model_layer(**dict_model_layer["kwargs"]).eval()
-
-                setattr(self.model, dict_layer["name"], model_layer)
-
-        self.print("Model")
-        self.print(self.model)
-        self.print(torchsummary.summary(self.model, [config.MODEL["shape_input"]], verbose=0))
-
-    def setup_optimizer(self):
-        self.print("Setting up optimizer...")
-
-        class_optimizer = getattr(torch.optim, config.TRAINING["optimizer"]["name"])
-        self.optimizer = class_optimizer(self.model.parameters(), **config.TRAINING["optimizer"]["kwargs"])
-
-        if "scheduler" in config.TRAINING:
-            class_scheduler = getattr(torch.optim.lr_scheduler, config.TRAINING["scheduler"]["name"])
-            self.scheduler = class_scheduler(self.optimizer, **config.TRAINING["scheduler"]["kwargs"])
-
-        self.print("Setting up optimizer finished")
-
-    def setup_criterion(self):
-        self.print("Setting up criterion...")
-
-        # TODO: combine multiple losses with weights. Adapt loss to losses in log etc.
-        class_criterion = getattr(torch.nn, config.CRITERION["name"])
-        self.criterion = class_criterion(**config.CRITERION["kwargs"])
-
-        self.print("Setting up criterion finished")
-
-    def setup_measurers(self):
-        self.print("Setting up measurers...")
-
-        self.measurers = []
-        for measurer in config.MEASURERS:
-            class_measurer = getattr(assignment.metrics, measurer["name"])
-            self.measurers += [class_measurer(**measurer["kwargs"])]
-
-        self.print("Setting up measurers finished")
-
-    def log_batch(self, pass_loop, iteration, epoch, num_samples, loss, output, targets):
+    @torch.no_grad()
+    def log_batch(self, pass_loop, iteration, epoch, num_samples, loss, lr, output, targets):
         self.log[pass_loop]["batches"]["epoch"] += [epoch]
         self.log[pass_loop]["batches"]["num_samples"] += [num_samples]
-        self.log[pass_loop]["batches"]["loss"] += [loss]
+        self.log[pass_loop]["batches"]["loss"] += [loss.item()]
+        self.log[pass_loop]["batches"]["learning_rate"] += [lr]
 
-        for measurer in self.measurers:
-            name_metric = type(measurer).__name__
+        for measurer in getattr(self, f"measurers_{pass_loop}"):
+            name_metric = measurer.name_module if hasattr(measurer, "name_module") else type(measurer).__name__
             metric = measurer(output, targets)
-            self.log[pass_loop]["batches"]["metrics"][name_metric] += [metric]
-            self.writer_tensorboard.add_scalar(f"{pass_loop}|Batches|{name_metric}", metric, iteration)
-        self.writer_tensorboard.add_scalar(f"{pass_loop}|Batches|Loss", loss, iteration)
+            self.log[pass_loop]["batches"]["metrics"][name_metric] += [metric.item()]
+            self.writer_tensorboard.add_scalar(f"{pass_loop}|Batches|{name_metric}", metric.item(), iteration)
+        self.writer_tensorboard.add_scalar(f"{pass_loop}|Batches|Loss", loss.item(), iteration)
+        self.writer_tensorboard.add_scalar(f"{pass_loop}|Batches|Learning rate", lr, iteration)
 
+    @torch.no_grad()
     def log_epoch(self, pass_loop, epoch, num_samples, num_batches):
         nums_samples = np.asarray(self.log[pass_loop]["batches"]["num_samples"][-num_batches:])
 
@@ -161,12 +122,17 @@ class Trainer:
         loss_epoch = np.sum(losses * nums_samples) / num_samples
         self.log[pass_loop]["epochs"]["loss"] += [loss_epoch]
 
+        lrs = np.asarray(self.log[pass_loop]["batches"]["learning_rate"][-num_batches:])
+        lr_epoch = np.sum(lrs * nums_samples) / num_samples
+        self.log[pass_loop]["epochs"]["learning_rate"] += [lr_epoch]
+
         for name, metrics in self.log[pass_loop]["batches"]["metrics"].items():
             metrics_epoch = np.asarray(metrics[-num_batches:])
             metric_epoch = np.sum(metrics_epoch * nums_samples) / num_samples
             self.log[pass_loop]["epochs"]["metrics"][name] += [metric_epoch]
             self.writer_tensorboard.add_scalar(f"{pass_loop}|Epochs|{name}", metric_epoch, epoch)
         self.writer_tensorboard.add_scalar(f"{pass_loop}|Epochs|Loss", loss_epoch, epoch)
+        self.writer_tensorboard.add_scalar(f"{pass_loop}|Epochs|Learning rate", lr_epoch, epoch)
 
     @torch.no_grad()
     def validate_epoch(self, epoch):
@@ -175,12 +141,14 @@ class Trainer:
             features = features.to(self.device)
             targets = targets.to(self.device)
 
-            output = self.model(features)
-            loss = self.criterion(output, targets)
+            with torch.autocast(device_type=self.device.type, dtype=torch.float16, enabled=self.scaler is not None):
+                output = self.model(features)
+                loss = self.criterion(output, targets)
+            self.scaler.scale(loss)
 
-            self.log_batch("validation", len(self.dataloader_validation) * epoch + i, epoch, len(targets), loss.item(), output, targets)
             lr = self.optimizer.param_groups[0]["lr"]
-            if i % config.FREQUENCY_LOG == 0 and not self.quiet:
+            self.log_batch("validation", len(self.dataloader_validation) * epoch + i, epoch, len(targets), loss, lr, output, targets)
+            if i % config.LOGGING["tqdm"]["frequency"] == 0 and not self.quiet:
                 progress_bar.set_description(f"Validating: Epoch {epoch:03d} | Batch {i:03d} | LR {lr:.6f} | Loss {loss.item():.5f}")
 
         self.log_epoch("validation", epoch, len(self.dataset_validation), len(self.dataloader_validation))
@@ -191,24 +159,32 @@ class Trainer:
             features = features.to(self.device)
             targets = targets.to(self.device)
 
-            output = self.model(features)
-            loss = self.criterion(output, targets)
-
+            with torch.autocast(device_type=self.device.type, dtype=torch.float16, enabled=self.scaler is not None):
+                output = self.model(features)
+                loss = self.criterion(output, targets)
             self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
 
-            self.log_batch("training", len(self.dataloader_training) * epoch + i, epoch, len(targets), loss.item(), output, targets)
             lr = self.optimizer.param_groups[0]["lr"]
-            if i % config.FREQUENCY_LOG == 0 and not self.quiet:
+            self.log_batch("training", len(self.dataloader_training) * epoch + i, epoch, len(targets), loss, lr, output, targets)
+            if i % config.LOGGING["tqdm"]["frequency"] == 0 and not self.quiet:
                 progress_bar.set_description(f"Training: Epoch {epoch:03d} | Batch {i:03d} | LR {lr:.6f} | Loss {loss.item():.5f}")
 
         self.log_epoch("training", epoch, len(self.dataset_training), len(self.dataloader_training))
 
     def loop(self, num_epochs, save_checkpoints=True):
-        self.print("Looping...")
+        self.print("Looping ...")
 
+        loss_best = float("inf")
+        epoch_loss_best = 0
         self.model = self.model.to(self.device)
+        self.criterion = self.criterion.to(self.device)
+        for i in range(len(self.measurers_training)):
+            self.measurers_training[i] = self.measurers_training[i].to(self.device)
+        for i in range(len(self.measurers_validation)):
+            self.measurers_validation[i] = self.measurers_validation[i].to(self.device)
 
         self.validate_epoch(0)
         for epoch in range(1, num_epochs + 1):
@@ -218,20 +194,31 @@ class Trainer:
             self.model.eval()
             self.validate_epoch(epoch)
 
+            loss_epoch = self.log["validation"]["epochs"]["loss"][-1]
             if self.scheduler is not None:
-                self.scheduler.step(self.log["validation"]["epochs"]["loss"][-1])
+                self.scheduler.step()
 
-            # Bad. But have no time left
-            if "transfer" in config.MODEL and "epochs_freeze" in config.MODEL["transfer"] and epoch == config.MODEL["transfer"]["epochs_freeze"]:
-                print("Training entire model now")
-                for param in self.model.parameters():
-                    param.requires_grad = True
+            if loss_epoch < loss_best:
+                loss_best = loss_epoch
+                epoch_loss_best = epoch
+                if save_checkpoints:
+                    utils_checkpoints.save(self, epoch, name="best")
 
             if save_checkpoints:
                 utils_checkpoints.save(self, epoch, name="latest")
-                if epoch % config.FREQUENCY_CHECKPOINT == 0 and epoch != 1:
+                if epoch % config.LOGGING["checkpoint"]["frequency"] == 0 and epoch != 1:
                     utils_checkpoints.save(self, epoch)
                 if epoch == num_epochs:
                     utils_checkpoints.save(self, epoch, name="final")
+
+            if "early_stopping" in config.TRAINING and epoch - epoch_loss_best > config.TRAINING["early_stopping"]["patience"]:
+                self.print("Looping stopped early")
+                break
+
+            # TODO: Bad. But have no time left
+            if "transfer" in config.MODEL and "epochs_freeze" in config.MODEL["transfer"] and epoch == config.MODEL["transfer"]["epochs_freeze"]:
+                self.print("Training entire model now")
+                for param in self.model.parameters():
+                    param.requires_grad = True
 
         self.print("Looping finished")
