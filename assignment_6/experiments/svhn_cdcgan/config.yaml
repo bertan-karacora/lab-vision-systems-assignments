@@ -1,18 +1,5 @@
 criterion:
-    kwargs:
-        weights:
-            - 1.0
-            - 0.001
-    modules:
-        -   kwargs:
-                key: prediction
-                kwargs_module:
-                    beta: 1.0
-                name_module: SmoothL1Loss
-            name: Select
-        -   kwargs: {}
-            name: ELBOGaussian
-    name: SumWeighted
+    name: BCELoss
 data:
     test:
         dataloader:
@@ -25,34 +12,32 @@ data:
                 ratio_validation_to_training: 0.2
                 use_download: false
             mean:
-                - 0.4378
-                - 0.4439
-                - 0.473
+                - 0.4375
+                - 0.4436
+                - 0.4727
             name: SVHN
             std:
                 - 0.1979
                 - 0.2009
-                - 0.197
+                - 0.1968
             transform:
                 features:
-                    kwargs: {}
                     name: Compose
                     transforms:
-                        -   kwargs: {}
-                            name: PILToTensor
+                        -   name: PILToTensor
                         -   kwargs:
                                 dtype: float32
                                 scale: true
                             name: ToDtype
                         -   kwargs:
                                 mean:
-                                    - 0.4378
-                                    - 0.4439
-                                    - 0.473
+                                    - 0.4375
+                                    - 0.4436
+                                    - 0.4727
                                 std:
                                     - 0.1979
                                     - 0.2009
-                                    - 0.197
+                                    - 0.1968
                             name: Normalize
                 target: null
     training:
@@ -66,34 +51,32 @@ data:
                 ratio_validation_to_training: 0.2
                 use_download: false
             mean:
-                - 0.4378
-                - 0.4439
-                - 0.473
+                - 0.4375
+                - 0.4436
+                - 0.4727
             name: SVHN
             std:
                 - 0.1979
                 - 0.2009
-                - 0.197
+                - 0.1968
             transform:
                 features:
-                    kwargs: {}
                     name: Compose
                     transforms:
-                        -   kwargs: {}
-                            name: PILToTensor
+                        -   name: PILToTensor
                         -   kwargs:
                                 dtype: float32
                                 scale: true
                             name: ToDtype
                         -   kwargs:
                                 mean:
-                                    - 0.4378
-                                    - 0.4439
-                                    - 0.473
+                                    - 0.4375
+                                    - 0.4436
+                                    - 0.4727
                                 std:
                                     - 0.1979
                                     - 0.2009
-                                    - 0.197
+                                    - 0.1968
                             name: Normalize
                 target: null
     validation:
@@ -107,34 +90,32 @@ data:
                 ratio_validation_to_training: 0.2
                 use_download: false
             mean:
-                - 0.4378
-                - 0.4439
-                - 0.473
+                - 0.4375
+                - 0.4436
+                - 0.4727
             name: SVHN
             std:
                 - 0.1979
                 - 0.2009
-                - 0.197
+                - 0.1968
             transform:
                 features:
-                    kwargs: {}
                     name: Compose
                     transforms:
-                        -   kwargs: {}
-                            name: PILToTensor
+                        -   name: PILToTensor
                         -   kwargs:
                                 dtype: float32
                                 scale: true
                             name: ToDtype
                         -   kwargs:
                                 mean:
-                                    - 0.4378
-                                    - 0.4439
-                                    - 0.473
+                                    - 0.4375
+                                    - 0.4436
+                                    - 0.4727
                                 std:
                                     - 0.1979
                                     - 0.2009
-                                    - 0.197
+                                    - 0.1968
                             name: Normalize
                 target: null
 logging:
@@ -145,149 +126,63 @@ logging:
     tqdm:
         frequency: 10
 measurers:
-    test:
-        -   kwargs:
-                key: prediction
-                kwargs_module:
-                    beta: 1.0
-                name_module: SmoothL1Loss
-            name: Select
-        -   kwargs: {}
-            name: ELBOGaussian
-        -   kwargs:
-                key: prediction
-                kwargs_module:
-                    feature: 64
-                    kwargs_unnormalize:
-                        mean:
-                            - 0.5084
-                            - 0.4224
-                            - 0.3768
-                        std:
-                            - 0.3048
-                            - 0.2824
-                            - 0.2808
-                    normalize: true
-                    reset_real_features: false
-                    use_unnormalize: true
-                name_module: FrechetInceptionDistance
-            name: Select
-    training:
-        -   kwargs:
-                key: prediction
-                kwargs_module:
-                    beta: 1.0
-                name_module: SmoothL1Loss
-            name: Select
-        -   kwargs: {}
-            name: ELBOGaussian
-    validation:
-        -   kwargs:
-                key: prediction
-                kwargs_module:
-                    beta: 1.0
-                name_module: SmoothL1Loss
-            name: Select
-        -   kwargs: {}
-            name: ELBOGaussian
-        -   kwargs:
-                key: prediction
-                kwargs_module:
-                    feature: 64
-                    kwargs_unnormalize:
-                        mean:
-                            - 0.5084
-                            - 0.4224
-                            - 0.3768
-                        std:
-                            - 0.3048
-                            - 0.2824
-                            - 0.2808
-                    normalize: true
-                    reset_real_features: false
-                    use_unnormalize: true
-                name_module: FrechetInceptionDistance
-            name: Select
+    -   kwargs:
+            key: prediction
+            kwargs_module:
+                beta: 1.0
+            name_module: SmoothL1Loss
+        name: Select
+    -   kwargs: {}
+        name: ELBOGaussian
+    -   kwargs:
+            feature: 64
+            kwargs_unnormalize:
+                mean:
+                    - 0.4375
+                    - 0.4436
+                    - 0.4727
+                std:
+                    - 0.1979
+                    - 0.2009
+                    - 0.1968
+            normalize: true
+            reset_real_features: false
+            use_unnormalize: true
+        name: FrechetInceptionDistance
 model:
     kwargs:
-        kwargs_decoder:
-            kwargs_block:
-                kwargs_conv:
-                    output_padding: 1
-                    padding: 1
-                    stride: 2
-                kwargs_pool: {}
-                name_layer_act: LeakyReLU
-                name_layer_norm: BatchNorm2d
-                name_layer_pool: null
-                shape_kernel_conv:
-                    - 3
-                    - 3
-                shape_kernel_pool: null
-            num_channels_out: 3
+        kwargs_discriminator:
+            nums_channels_hidden:
+                - 64
+                - 128
+                - 256
+                - 512
+            prob_dropout: 0.3
+        kwargs_generator:
             nums_channels_hidden:
                 - 512
                 - 256
                 - 128
                 - 64
-                - 32
-            shape_input:
-                - 1024
-                - 2
-                - 2
-        kwargs_encoder:
-            kwargs_block:
-                kwargs_conv:
-                    padding: 1
-                    stride: 2
-                kwargs_pool: {}
-                name_layer_act: LeakyReLU
-                name_layer_norm: BatchNorm2d
-                name_layer_pool: null
-                shape_kernel_conv:
-                    - 3
-                    - 3
-                shape_kernel_pool: null
-            num_channels_out: 1024
-            nums_channels_hidden:
-                - 32
-                - 64
-                - 128
-                - 256
-                - 512
-            shape_input:
-                - 3
-                - 128
-                - 128
-        kwargs_normalize:
-            mean:
-                - 0.5084
-                - 0.4224
-                - 0.3768
-            std:
-                - 0.3048
-                - 0.2824
-                - 0.2808
-        name_decoder: CNN2dDecoder
-        name_encoder: CNN2dEncoder
+        name_discriminator: DiscriminatorDCGAN
+        name_generator: GeneratorDCGAN2d
         num_channels_latent: 64
-        num_channels_out_encode: 4096
-        shape_input_decoder:
-            - 1024
-            - 2
-            - 2
-        use_normalize: true
-    name: VAEGaussian
+        num_channels_out: 1
+        num_channels_real: 3
+    name: GAN
     shape_input:
         - 3
-        - 128
-        - 128
+        - 32
+        - 32
 training:
     early_stopping:
         patience: 10
     num_epochs: 20
     optimizer:
         kwargs:
+            betas:
+                - 0.5
+                - 0.9
             lr: 0.0003
             weight_decay: 0.001
         name: Adam

@@ -9,14 +9,16 @@ import assignment.libs.utils_model as utils_model
 
 
 def create_transform(dict_transform):
+    kwargs_transform = dict_transform["kwargs"] if "kwargs" in dict_transform else {}
+
     class_transform = utils_import.import_transform(dict_transform["name"])
     if dict_transform["name"] in ["Compose", "RandomApply", "RandomChoice", "RandomOrder"]:
         transform = class_transform(
             transforms=create_transforms(dict_transform["transforms"]),
-            **dict_transform["kwargs"],
+            **kwargs_transform,
         )
     else:
-        transform = class_transform(**dict_transform["kwargs"])
+        transform = class_transform(**kwargs_transform)
 
     return transform
 
@@ -38,34 +40,40 @@ def create_transform_dataset(split, target):
 
 
 def create_dataset(split):
-    name_dataset = config.DATA[split]["dataset"]["name"]
+    dict_dataset = config.DATA[split]["dataset"]
+    kwargs_dataset = dict_dataset["kwargs"] if "kwargs" in dict_dataset else {}
 
-    class_dataset = utils_import.import_dataset(name_dataset)
+    class_dataset = utils_import.import_dataset(dict_dataset["name"])
     dataset_split = class_dataset(
-        path=Path(config._PATH_DIR_DATA) / name_dataset.lower(),
+        path=Path(config._PATH_DIR_DATA) / dict_dataset["name"].lower(),
         split=split,
         transform=create_transform_dataset(split, "features"),
         transform_target=create_transform_dataset(split, "target"),
-        **config.DATA[split]["dataset"]["kwargs"],
+        **kwargs_dataset,
     )
 
     return dataset_split
 
 
 def create_collation(split):
-    name_collation = config.DATA[split]["dataloader"]["collation"]["name"]
-    create_collation_fn = getattr(collations, name_collation)
-    collate_fn = create_collation_fn(**config.DATA[split]["dataloader"]["collation"]["kwargs"])
+    dict_collation = config.DATA[split]["dataloader"]["collation"]
+    kwargs_collation = dict_collation["kwargs"] if "kwargs" in dict_collation else {}
+
+    create_collation_fn = getattr(collations, dict_collation["name"])
+    collate_fn = create_collation_fn(**kwargs_collation)
 
     return collate_fn
 
 
 def create_dataloader(dataset_split, split):
+    dict_dataloader = config.DATA[split]["dataloader"]
+    kwargs_dataloader = dict_dataloader["kwargs"] if "kwargs" in dict_dataloader else {}
+
     dataloader_split = torch.utils.data.DataLoader(
         dataset_split,
         num_workers=config._NUM_WORKERS_DATALOADING,
-        collate_fn=create_collation(split) if "collation" in config.DATA[split]["dataloader"] else None,
-        **config.DATA[split]["dataloader"]["kwargs"],
+        collate_fn=create_collation(split) if "collation" in dict_dataloader else None,
+        **kwargs_dataloader,
     )
 
     return dataloader_split
@@ -78,16 +86,19 @@ def create_dataset_and_dataloader(split):
     return dataset_split, dataloader_split
 
 
-def create_model():
-    class_model = utils_import.import_model(config.MODEL["name"])
-    model = class_model(**config.MODEL["kwargs"]).eval()
+def create_model(dict_model=None):
+    dict_model = dict_model or config.MODEL
+    kwargs_model = dict_model["kwargs"] if "kwargs" in dict_model else {}
+
+    class_model = utils_import.import_model(dict_model["name"])
+    model = class_model(**kwargs_model).eval()
 
     # TODO: This is bad.
-    if "transfer" in config.MODEL:
-        if "epochs_freeze" in config.MODEL["transfer"] and config.MODEL["transfer"]["epochs_freeze"] > 0:
+    if "transfer" in dict_model:
+        if "epochs_freeze" in dict_model["transfer"] and dict_model["transfer"]["epochs_freeze"] > 0:
             model = utils_model.freeze(model)
 
-        for dict_layer in config.MODEL["transfer"]["layers"]:
+        for dict_layer in dict_model["transfer"]["layers"]:
             dict_model_layer = dict_layer["model"]
             class_model_layer = utils_import.import_model(dict_model_layer["name"])
             model_layer = class_model_layer(**dict_model_layer["kwargs"]).eval()
@@ -99,15 +110,16 @@ def create_model():
 
 def create_criterion(dict_criterion=None):
     dict_criterion = dict_criterion or config.CRITERION
+    kwargs_criterion = dict_criterion["kwargs"] if "kwargs" in dict_criterion else {}
 
     class_criterion = utils_import.import_criterion(dict_criterion["name"])
     if dict_criterion["name"] in ["SumWeighted"]:
         criterion = class_criterion(
             modules=create_criteria(dict_criterion["modules"]),
-            **dict_criterion["kwargs"],
+            **kwargs_criterion,
         )
     else:
-        criterion = class_criterion(**dict_criterion["kwargs"])
+        criterion = class_criterion(**kwargs_criterion)
 
     return criterion
 
@@ -121,37 +133,43 @@ def create_criteria(dicts_criteria=None):
 
 
 def create_measurer(dict_measurer):
+    kwargs_measurer = dict_measurer["kwargs"] if "kwargs" in dict_measurer else {}
+
     class_measurer = utils_import.import_metric(dict_measurer["name"])
-    measurer = class_measurer(**dict_measurer["kwargs"])
+    measurer = class_measurer(**kwargs_measurer)
     return measurer
 
 
-def create_measurers(split):
+def create_measurers(dicts_measurers):
     measurers = []
-    for dict_measurer in config.MEASURERS[split]:
+    for dict_measurer in dicts_measurers:
         measurer = create_measurer(dict_measurer)
         measurers += [measurer]
     return measurers
 
 
 def create_optimizer(params):
-    class_optimizer = getattr(torch.optim, config.TRAINING["optimizer"]["name"])
-    optimizer = class_optimizer(params, **config.TRAINING["optimizer"]["kwargs"])
+    dict_optimizer = config.TRAINING["optimizer"]
+    kwargs_optimizer = dict_optimizer["kwargs"] if "kwargs" in dict_optimizer else {}
+
+    class_optimizer = getattr(torch.optim, dict_optimizer["name"])
+    optimizer = class_optimizer(params, **kwargs_optimizer)
     return optimizer
 
 
 def create_scheduler(optimizer, dict_scheduler=None):
     dict_scheduler = dict_scheduler or config.TRAINING["scheduler"]
+    kwargs_scheduler = dict_scheduler["kwargs"] if "kwargs" in dict_scheduler else {}
 
     class_scheduler = getattr(torch.optim.lr_scheduler, dict_scheduler["name"])
     if dict_scheduler["name"] in ["SequentialLR"]:
         scheduler = class_scheduler(
             optimizer=optimizer,
             schedulers=create_schedulers(optimizer, dict_scheduler["schedulers"]),
-            **dict_scheduler["kwargs"],
+            **kwargs_scheduler,
         )
     else:
-        scheduler = class_scheduler(optimizer, **dict_scheduler["kwargs"])
+        scheduler = class_scheduler(optimizer, **kwargs_scheduler)
 
     return scheduler
 

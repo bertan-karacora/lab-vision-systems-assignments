@@ -22,25 +22,22 @@ data:
                 shuffle: false
         dataset:
             kwargs:
-                types_target_tv: []
                 use_download: false
                 use_features_as_target: true
             mean:
-                - 0.5015
-                - 0.415
-                - 0.3697
+                - 0.5084
+                - 0.4224
+                - 0.3768
             name: CelebA
             std:
-                - 0.3061
-                - 0.2822
-                - 0.2801
+                - 0.3048
+                - 0.2824
+                - 0.2808
             transform:
                 features:
-                    kwargs: {}
                     name: Compose
                     transforms:
-                        -   kwargs: {}
-                            name: PILToTensor
+                        -   name: PILToTensor
                         -   kwargs:
                                 size:
                                     - 178
@@ -57,13 +54,13 @@ data:
                             name: ToDtype
                         -   kwargs:
                                 mean:
-                                    - 0.5015
-                                    - 0.415
-                                    - 0.3697
+                                    - 0.5084
+                                    - 0.4224
+                                    - 0.3768
                                 std:
-                                    - 0.3061
-                                    - 0.2822
-                                    - 0.2801
+                                    - 0.3048
+                                    - 0.2824
+                                    - 0.2808
                             name: Normalize
                 target: null
     training:
@@ -74,25 +71,22 @@ data:
                 shuffle: true
         dataset:
             kwargs:
-                types_target_tv: []
                 use_download: false
                 use_features_as_target: true
             mean:
-                - 0.5015
-                - 0.415
-                - 0.3697
+                - 0.5084
+                - 0.4224
+                - 0.3768
             name: CelebA
             std:
-                - 0.3061
-                - 0.2822
-                - 0.2801
+                - 0.3048
+                - 0.2824
+                - 0.2808
             transform:
                 features:
-                    kwargs: {}
                     name: Compose
                     transforms:
-                        -   kwargs: {}
-                            name: PILToTensor
+                        -   name: PILToTensor
                         -   kwargs:
                                 size:
                                     - 178
@@ -109,13 +103,13 @@ data:
                             name: ToDtype
                         -   kwargs:
                                 mean:
-                                    - 0.5015
-                                    - 0.415
-                                    - 0.3697
+                                    - 0.5084
+                                    - 0.4224
+                                    - 0.3768
                                 std:
-                                    - 0.3061
-                                    - 0.2822
-                                    - 0.2801
+                                    - 0.3048
+                                    - 0.2824
+                                    - 0.2808
                             name: Normalize
                 target: null
     validation:
@@ -126,25 +120,22 @@ data:
                 shuffle: false
         dataset:
             kwargs:
-                types_target_tv: []
                 use_download: false
                 use_features_as_target: true
             mean:
-                - 0.5015
-                - 0.415
-                - 0.3697
+                - 0.5084
+                - 0.4224
+                - 0.3768
             name: CelebA
             std:
-                - 0.3061
-                - 0.2822
-                - 0.2801
+                - 0.3048
+                - 0.2824
+                - 0.2808
             transform:
                 features:
-                    kwargs: {}
                     name: Compose
                     transforms:
-                        -   kwargs: {}
-                            name: PILToTensor
+                        -   name: PILToTensor
                         -   kwargs:
                                 size:
                                     - 178
@@ -161,13 +152,13 @@ data:
                             name: ToDtype
                         -   kwargs:
                                 mean:
-                                    - 0.5015
-                                    - 0.415
-                                    - 0.3697
+                                    - 0.5084
+                                    - 0.4224
+                                    - 0.3768
                                 std:
-                                    - 0.3061
-                                    - 0.2822
-                                    - 0.2801
+                                    - 0.3048
+                                    - 0.2824
+                                    - 0.2808
                             name: Normalize
                 target: null
 logging:
