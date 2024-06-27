@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+import assignment.libs.utils_data as utils_data
 import assignment.libs.utils_visualization as utils_visualization
 
 
@@ -138,4 +139,42 @@ def visualize_featuremaps(featuremaps):
         subfig = fig.add_subfigure(gs[i, :])
         subfigure_featuremaps(subfig, name, torch.squeeze(featuremaps_single))
 
+    plt.show()
+
+
+@torch.no_grad()
+def visualize_interpolation_grid(model, shape_image, num_channels_latent, label_input, xrange=(-2, 2), yrange=(-2, 2), use_unnormalize=False, resolution=12, path_save=None):
+    din_a4 = np.array([210, 297]) / 25.4
+    fig = plt.figure(figsize=din_a4)
+
+    def subplot_interpolation_grid():
+        ax = plt.gca()
+
+        ax.set_title(f"Equispaced points from latent space (2D projection)", fontsize=9)
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        grid = np.empty((3, resolution * shape_image[0], resolution * shape_image[1]))
+        for i, y in enumerate(np.linspace(*yrange, resolution)):
+            for j, x in enumerate(np.linspace(*xrange, resolution)):
+                code_latent = torch.zeros(num_channels_latent, device=device)[None, ...]
+
+                code_latent[:, : code_latent.shape[1] // 2] = x
+                code_latent[:, code_latent.shape[1] // 2 :] = y
+
+                output = model.decode(code_latent, label_input).cpu()
+
+                if use_unnormalize:
+                    output = utils_data.unnormalize(output, split="test")
+
+                grid[:, (resolution - 1 - i) * shape_image[0] : (resolution - i) * shape_image[0], j * shape_image[1] : (j + 1) * shape_image[1]] = output
+
+        ax.imshow(grid.transpose((1, 2, 0)), extent=[*yrange, *xrange])
+        ax.axis("off")
+
+    fig.add_subplot(2, 1, 1)
+    subplot_interpolation_grid()
+
+    plt.tight_layout()
+    if path_save:
+        plt.savefig(path_save)
     plt.show()

@@ -81,20 +81,22 @@ data:
                 shuffle: false
                 pin_memory: true
 model_discriminator:
-    name: DiscriminatorDCGAN
+    name: DiscriminatorCDCGAN2d
     shape_input: [3, 32, 32]
     kwargs:
-        num_channel_in: 3
-        nums_channels_hidden: [64, 128, 256, 512]
-        num_channel_out: 1
+        num_channels_in_features: 3
+        num_channels_in_label: 1
+        nums_channels_hidden: [128, 256, 512, 1024]
+        num_channels_out: 1
         prob_dropout: 0.3
 model_generator:
-    name: GeneratorDCGAN
-    shape_input: [64]
+    name: GeneratorCDCGAN2d
+    shape_input: [32]
     kwargs:
-        num_channel_in: 64
-        nums_channels_hidden: [512, 256, 128, 64]
-        num_channel_out: 3
+        num_channels_in_latent: 32
+        num_channels_in_label: 1
+        nums_channels_hidden: [1024, 512, 256, 128]
+        num_channels_out: 3
         use_normalize: true
         kwargs_normalize:
             mean: [0.4375, 0.4436, 0.4727]
@@ -103,18 +105,15 @@ measurers_discriminator:
     training:
         - name: Accuracy
           kwargs:
-              task: multiclass
-              num_classes: 10
+              task: binary
     validation:
         - name: Accuracy
           kwargs:
-              task: multiclass
-              num_classes: 10
+              task: binary
     test:
         - name: Accuracy
           kwargs:
-              task: multiclass
-              num_classes: 10
+              task: binary
 measurers_generator:
     training:
         - name: FrechetInceptionDistance
@@ -169,13 +168,11 @@ training:
                   gamma: 0.9
         kwargs:
             milestones: [5]
-    use_amp: true
-    early_stopping:
-        patience: 10
 logging:
     tqdm:
         frequency: 10
     tensorboard:
         frequency: 1
+        frequency_images: 300
     checkpoint:
         frequency: 10

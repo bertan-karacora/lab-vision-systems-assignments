@@ -12,6 +12,7 @@ class FrechetInceptionDistance(torch.nn.Module):
         self.metric_tm = fid_tm.FrechetInceptionDistance(**kwargs)
         self.use_unnormalize = use_unnormalize
 
+    @torch.no_grad()
     def forward(self, input, target):
         if self.use_unnormalize:
             input = unnormalize.unnormalize(input, **self.kwargs_unnormalize)

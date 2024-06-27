@@ -125,58 +125,108 @@ logging:
         frequency: 1
     tqdm:
         frequency: 10
-measurers:
-    -   kwargs:
-            key: prediction
-            kwargs_module:
-                beta: 1.0
-            name_module: SmoothL1Loss
-        name: Select
-    -   kwargs: {}
-        name: ELBOGaussian
-    -   kwargs:
-            feature: 64
-            kwargs_unnormalize:
-                mean:
-                    - 0.4375
-                    - 0.4436
-                    - 0.4727
-                std:
-                    - 0.1979
-                    - 0.2009
-                    - 0.1968
-            normalize: true
-            reset_real_features: false
-            use_unnormalize: true
-        name: FrechetInceptionDistance
-model:
+measurers_discriminator:
+    test:
+        -   kwargs:
+                task: binary
+            name: Accuracy
+    training:
+        -   kwargs:
+                task: binary
+            name: Accuracy
+    validation:
+        -   kwargs:
+                task: binary
+            name: Accuracy
+measurers_generator:
+    test:
+        -   kwargs:
+                feature: 64
+                kwargs_unnormalize:
+                    mean:
+                        - 0.4375
+                        - 0.4436
+                        - 0.4727
+                    std:
+                        - 0.1979
+                        - 0.2009
+                        - 0.1968
+                normalize: true
+                reset_real_features: true
+                use_unnormalize: true
+            name: FrechetInceptionDistance
+    training:
+        -   kwargs:
+                feature: 64
+                kwargs_unnormalize:
+                    mean:
+                        - 0.4375
+                        - 0.4436
+                        - 0.4727
+                    std:
+                        - 0.1979
+                        - 0.2009
+                        - 0.1968
+                normalize: true
+                reset_real_features: true
+                use_unnormalize: true
+            name: FrechetInceptionDistance
+    validation:
+        -   kwargs:
+                feature: 64
+                kwargs_unnormalize:
+                    mean:
+                        - 0.4375
+                        - 0.4436
+                        - 0.4727
+                    std:
+                        - 0.1979
+                        - 0.2009
+                        - 0.1968
+                normalize: true
+                reset_real_features: true
+                use_unnormalize: true
+            name: FrechetInceptionDistance
+model_discriminator:
     kwargs:
-        kwargs_discriminator:
-            nums_channels_hidden:
-                - 64
-                - 128
-                - 256
-                - 512
-            prob_dropout: 0.3
-        kwargs_generator:
-            nums_channels_hidden:
-                - 512
-                - 256
-                - 128
-                - 64
-        name_discriminator: DiscriminatorDCGAN
-        name_generator: GeneratorDCGAN2d
-        num_channels_latent: 64
+        num_channels_in_features: 3
+        num_channels_in_label: 1
         num_channels_out: 1
-        num_channels_real: 3
-    name: GAN
+        nums_channels_hidden:
+            - 128
+            - 256
+            - 512
+            - 1024
+        prob_dropout: 0.3
+    name: DiscriminatorCDCGAN2d
     shape_input:
         - 3
         - 32
         - 32
+model_generator:
+    kwargs:
+        kwargs_normalize:
+            mean:
+                - 0.4375
+                - 0.4436
+                - 0.4727
+            std:
+                - 0.1979
+                - 0.2009
+                - 0.1968
+        num_channels_in_label: 1
+        num_channels_in_latent: 32
+        num_channels_out: 3
+        nums_channels_hidden:
+            - 1024
+            - 512
+            - 256
+            - 128
+        use_normalize: true
+    name: GeneratorCDCGAN2d
+    shape_input:
+        - 32
 training:
-    early_stopping:
-        patience: 10
     num_epochs: 20
     optimizer:
         kwargs:
@@ -187,7 +237,6 @@ training:
             weight_decay: 0.001
         name: Adam
     scheduler:
-        dynamic: null
         kwargs:
             milestones:
                 - 5
@@ -201,4 +250,3 @@ training:
             -   kwargs:
                     gamma: 0.9
                 name: ExponentialLR
-    use_amp: true

@@ -4,6 +4,7 @@ import pandas as pd
 import seaborn as sbn
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+import torch
 
 import assignment.libs.utils_visualization as utils_visualization
 
@@ -154,9 +155,9 @@ def plot_metric(log, name_metric, path_save=None):
     plt.show()
 
 
-def plot_metrics(log, path_plots=None):
+def plot_metrics(log, path_plots=None, suffix=None):
     for name_metric in log["validation"]["batches"]["metrics"].keys():
-        path_save = path_plots / f"Metrics_{name_metric}.png"
+        path_save = path_plots / f"Metrics_{name_metric}{f"_{suffix}" if suffix else ""}.png"
         plot_metric(log, name_metric, path_save=path_save)
 
 

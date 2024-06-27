@@ -5,11 +5,13 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 import torchsummary
+import torchvision as tv
 from tqdm import tqdm
 
 import assignment.config as config
 import assignment.libs.factory as factory
 import assignment.libs.utils_checkpoints as utils_checkpoints
+import assignment.libs.utils_data as utils_data
 
 
 class Trainer:
@@ -34,7 +36,6 @@ class Trainer:
         self.optimizer_discriminator = None
         self.optimizer_generator = None
         self.path_dir_exp = None
-        self.scaler = None
         self.scheduler_discriminator = None
         self.scheduler_generator = None
         self.quiet = quiet
@@ -56,15 +57,16 @@ class Trainer:
     Optimizer (generator): {self.optimizer_generator}
     Scheduler (discriminator): {self.scheduler_discriminator}
     Scheduler (generator): {self.scheduler_generator}
-    Measurers (training): {self.measurers_training}
-    Measurers (validation): {self.measurers_validation}"""
+    Measurers (discriminator, training): {self.measurers_training_discriminator}
+    Measurers (generator, training): {self.measurers_training_generator}
+    Measurers (discriminator, validation): {self.measurers_validation_discriminator}
+    Measurers (generator, validation): {self.measurers_validation_generator}"""
         return s
 
     def _init(self):
         self.path_dir_exp = Path(config._PATH_DIR_EXPS) / self.name_exp
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.writer_tensorboard = SummaryWriter(self.path_dir_exp / "tensorboard")
-        self.scaler = torch.cuda.amp.GradScaler(enabled=config.TRAINING["use_amp"])
         self.log_discriminator = {
             "training": {
                 "batches": {
@@ -138,13 +140,17 @@ class Trainer:
             self.scheduler_discriminator = factory.create_scheduler(self.optimizer_discriminator)
             self.scheduler_generator = factory.create_scheduler(self.optimizer_generator)
         self.measurers_training_discriminator = factory.create_measurers(config.MEASURERS_DISCRIMINATOR["training"])
-        self.measurers_training_generator = factory.create_measurers(config.MEASURERS_DISCRIMINATOR["training"])
-        self.measurers_validation_discriminator = factory.create_measurers(config.MEASURERS_GENERATOR["validation"])
+        self.measurers_training_generator = factory.create_measurers(config.MEASURERS_GENERATOR["training"])
+        self.measurers_validation_discriminator = factory.create_measurers(config.MEASURERS_DISCRIMINATOR["validation"])
         self.measurers_validation_generator = factory.create_measurers(config.MEASURERS_GENERATOR["validation"])
 
         self.print(self)
-        self.print(torchsummary.summary(self.model_discriminator, [config.MODEL_DISCRIMINATOR["shape_input"]], verbose=0))
-        self.print(torchsummary.summary(self.model_generator, [config.MODEL_GENERATOR["shape_input"]], verbose=0))
+        try:
+            self.print(torchsummary.summary(self.model_discriminator, [config.MODEL_DISCRIMINATOR["shape_input"]], verbose=0))
+            self.print(torchsummary.summary(self.model_generator, [config.MODEL_GENERATOR["shape_input"]], verbose=0))
+        except Exception as e:
+            self.print(e)
+            self.print("Failed to run torchsummary")
 
     def print(self, s):
         if not self.quiet:
@@ -179,6 +185,11 @@ class Trainer:
             self.writer_tensorboard.add_scalar(f"Generator|{pass_loop}|Batches|{name_metric}", metric.item(), iteration)
         self.writer_tensorboard.add_scalar(f"Generator|{pass_loop}|Batches|Loss", loss.item(), iteration)
         self.writer_tensorboard.add_scalar(f"Generator|{pass_loop}|Batches|Learning rate", lr, iteration)
+        if "frequency_images" in config.LOGGING["tensorboard"] and iteration % config.LOGGING["tensorboard"]["frequency_images"] == 0:
+            images = self.model_generator.sample(num_samples=16)
+            images = utils_data.unnormalize(images, split=pass_loop)
+            grid = tv.utils.make_grid(images, nrow=4)
+            self.writer_tensorboard.add_image(f"Generator|{pass_loop}|Images", grid, global_step=iteration)
 
     @torch.no_grad()
     def log_epoch_discriminator(self, pass_loop, epoch, num_samples, num_batches):
@@ -226,51 +237,90 @@ class Trainer:
         for i, (features, targets) in enumerate(progress_bar, start=1):
             features = features.to(self.device)
             targets = targets.to(self.device)
+            latent = self.model_generator.sample_latent(num_samples=features.shape[0])
 
-            with torch.autocast(device_type=self.device.type, dtype=torch.float16, enabled=self.scaler is not None):
-                output = self.model(features)
-                loss = self.criterion(output, targets)
-            self.scaler.scale(loss)
+            targets_real = torch.ones(features.shape[0], device=self.device)
+            targets_fake = torch.zeros(features.shape[0], device=self.device)
+
+            output_discriminator_real = self.model_discriminator(features, targets)
+            loss_discriminator_real = self.criterion_discriminator_real(output_discriminator_real, targets_real)
+
+            features_fake = self.model_generator(latent, targets)
+            output_discriminator_fake = self.model_discriminator(features_fake.detach(), targets)
+            loss_discriminator_fake = self.criterion_discriminator_fake(output_discriminator_fake, targets_fake)
+
+            loss_discriminator = loss_discriminator_real + loss_discriminator_fake
 
             lr = self.optimizer_discriminator.param_groups[0]["lr"]
-            self.log_batch("validation", len(self.dataloader_validation) * epoch + i, epoch, len(targets), loss, lr, output, targets)
-            if i % config.LOGGING["tqdm"]["frequency"] == 0 and not self.quiet:
-                progress_bar.set_description(f"Validating: Epoch {epoch:03d} | Batch {i:03d} | LR {lr:.6f} | Loss {loss.item():.5f}")
+            output_discriminator = torch.concat((output_discriminator_real, output_discriminator_fake), dim=0)
+            targets_discriminator = torch.concat((targets_real, targets_fake), dim=0)
+            self.log_batch_discriminator("validation", len(self.dataloader_validation) * epoch + i, epoch, len(features), loss_discriminator, lr, output_discriminator, targets_discriminator)
 
-        self.log_epoch("validation", epoch, len(self.dataset_validation), len(self.dataloader_validation))
+            output_generator = self.model_discriminator(features_fake, targets)
+            loss_generator = self.criterion_generator(output_generator, targets_real.clone())
+
+            lr = self.optimizer_generator.param_groups[0]["lr"]
+            self.log_batch_generator("validation", len(self.dataloader_validation) * epoch + i, epoch, len(features), loss_generator, lr, features_fake, features)
+
+            if i % config.LOGGING["tqdm"]["frequency"] == 0 and not self.quiet:
+                progress_bar.set_description(
+                    f"Validation: Epoch {epoch:03d} | Batch {i:03d} | LR {lr:.6f} | Loss (descriminator) {loss_discriminator.item():.5f} | Loss (generator) {loss_generator.item():.5f}"
+                )
+
+        self.log_epoch_discriminator("validation", epoch, len(self.dataset_validation), len(self.dataloader_validation))
+        self.log_epoch_generator("validation", epoch, len(self.dataset_validation), len(self.dataloader_validation))
 
     def train_epoch(self, epoch):
         progress_bar = tqdm(self.dataloader_training, total=len(self.dataloader_training), disable=self.quiet)
         for i, (features, targets) in enumerate(progress_bar, start=1):
             features = features.to(self.device)
             targets = targets.to(self.device)
+            latent = self.model_generator.sample_latent(num_samples=features.shape[0])
 
-            with torch.autocast(device_type=self.device.type, dtype=torch.float16, enabled=self.scaler is not None):
-                output = self.model(features)
-                loss = self.criterion(output, targets)
-            self.optimizer.zero_grad()
-            self.scaler.scale(loss).backward()
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
+            targets_real = torch.ones(features.shape[0], device=self.device)
+            targets_fake = torch.zeros(features.shape[0], device=self.device)
 
+            output_discriminator_real = self.model_discriminator(features, targets)
+            loss_discriminator_real = self.criterion_discriminator_real(output_discriminator_real, targets_real)
 
-            self.criterion_g = lambda pred: F.binary_cross_entropy(pred, torch.ones(pred.shape[0], device=pred.device))
-        self.criterion_d_real = lambda pred: F.binary_cross_entropy(pred, torch.ones(pred.shape[0], device=pred.device))
-        self.criterion_d_fake = lambda pred: F.binary_cross_entropy(pred, torch.zeros(pred.shape[0], device=pred.device))
+            features_fake = self.model_generator(latent, targets)
+            output_discriminator_fake = self.model_discriminator(features_fake.detach(), targets)
+            loss_discriminator_fake = self.criterion_discriminator_fake(output_discriminator_fake, targets_fake)
 
+            loss_discriminator = loss_discriminator_real + loss_discriminator_fake
+
+            self.optimizer_discriminator.zero_grad()
+            loss_discriminator.backward()
+            self.optimizer_discriminator.step()
 
             lr = self.optimizer_discriminator.param_groups[0]["lr"]
-            self.log_batch("training", len(self.dataloader_training) * epoch + i, epoch, len(targets), loss, lr, output, targets)
-            if i % config.LOGGING["tqdm"]["frequency"] == 0 and not self.quiet:
-                progress_bar.set_description(f"Training: Epoch {epoch:03d} | Batch {i:03d} | LR {lr:.6f} | Loss {loss.item():.5f}")
+            output_discriminator = torch.concat((output_discriminator_real, output_discriminator_fake), dim=0)
+            targets_discriminator = torch.concat((targets_real, targets_fake), dim=0)
+            self.log_batch_discriminator("training", len(self.dataloader_training) * epoch + i, epoch, len(features), loss_discriminator, lr, output_discriminator, targets_discriminator)
 
-        self.log_epoch("training", epoch, len(self.dataset_training), len(self.dataloader_training))
+            output_generator = self.model_discriminator(features_fake, targets)
+            loss_generator = self.criterion_generator(output_generator, targets_real.clone())
+
+            self.optimizer_generator.zero_grad()
+            loss_generator.backward()
+            self.optimizer_generator.step()
+
+            lr = self.optimizer_generator.param_groups[0]["lr"]
+            self.log_batch_generator("training", len(self.dataloader_training) * epoch + i, epoch, len(features), loss_generator, lr, features_fake, features)
+
+            if i % config.LOGGING["tqdm"]["frequency"] == 0 and not self.quiet:
+                progress_bar.set_description(
+                    f"Training: Epoch {epoch:03d} | Batch {i:03d} | LR {lr:.6f} | Loss (descriminator) {loss_discriminator.item():.5f} | Loss (generator) {loss_generator.item():.5f}"
+                )
+
+        self.log_epoch_discriminator("training", epoch, len(self.dataset_training), len(self.dataloader_training))
+        self.log_epoch_generator("training", epoch, len(self.dataset_training), len(self.dataloader_training))
 
     def loop(self, num_epochs, save_checkpoints=True):
         self.print("Looping ...")
 
         loss_best = float("inf")
-        epoch_loss_best = 0
+
         self.model_discriminator = self.model_discriminator.to(self.device)
         self.model_generator = self.model_generator.to(self.device)
         self.criterion_discriminator_fake = self.criterion_discriminator_fake.to(self.device)
@@ -295,15 +345,14 @@ class Trainer:
             self.model_generator.eval()
             self.validate_epoch(epoch)
 
-            loss_epoch = self.log_generator["validation"]["epochs"]["loss"][-1]
             if self.scheduler_discriminator is not None:
                 self.scheduler_discriminator.step()
             if self.scheduler_generator is not None:
                 self.scheduler_generator.step()
 
+            loss_epoch = self.log_generator["validation"]["epochs"]["loss"][-1]
             if loss_epoch < loss_best:
                 loss_best = loss_epoch
-                epoch_loss_best = epoch
                 if save_checkpoints:
                     utils_checkpoints.save(self, epoch, name="best")
 
@@ -313,15 +362,5 @@ class Trainer:
                     utils_checkpoints.save(self, epoch)
                 if epoch == num_epochs:
                     utils_checkpoints.save(self, epoch, name="final")
-
-            if "early_stopping" in config.TRAINING and epoch - epoch_loss_best > config.TRAINING["early_stopping"]["patience"]:
-                self.print("Looping stopped early")
-                break
-
-            # TODO: Bad. But have no time left
-            if "transfer" in config.MODEL and "epochs_freeze" in config.MODEL["transfer"] and epoch == config.MODEL["transfer"]["epochs_freeze"]:
-                self.print("Training entire model now")
-                for param in self.model.parameters():
-                    param.requires_grad = True
 
         self.print("Looping finished")

@@ -98,113 +98,71 @@ data:
                 batch_size: 128
                 shuffle: false
                 pin_memory: true
-model:
-    name: VAEGaussian
+model_discriminator:
+    name: DiscriminatorDCGAN2d
     shape_input: [3, 128, 128]
     kwargs:
-        num_channels_out_encode: 4096
-        num_channels_latent: 64
-        shape_input_decoder: [1024, 2, 2]
-        name_encoder: CNN2dEncoder
-        kwargs_encoder:
-            shape_input: [3, 128, 128]
-            nums_channels_hidden: [32, 64, 128, 256, 512]
-            num_channels_out: 1024
-            kwargs_block:
-                shape_kernel_conv: [3, 3]
-                shape_kernel_pool: null
-                name_layer_act: LeakyReLU
-                name_layer_norm: BatchNorm2d
-                name_layer_pool: null
-                kwargs_conv:
-                    padding: 1
-                    stride: 2
-                kwargs_pool: {}
-        name_decoder: CNN2dDecoder
-        kwargs_decoder:
-            shape_input: [1024, 2, 2]
-            nums_channels_hidden: [512, 256, 128, 64, 32]
-            num_channels_out: 3
-            kwargs_block:
-                shape_kernel_conv: [3, 3]
-                shape_kernel_pool: null
-                name_layer_act: LeakyReLU
-                name_layer_norm: BatchNorm2d
-                name_layer_pool: null
-                kwargs_conv:
-                    padding: 1
-                    stride: 2
-                    output_padding: 1
-                kwargs_pool: {}
+        num_channels_in: 3
+        nums_channels_hidden: [32, 64, 128, 256, 512, 1024]
+        num_channels_out: 1
+        prob_dropout: 0.3
+model_generator:
+    name: GeneratorDCGAN2d
+    shape_input: [128]
+    kwargs:
+        num_channels_in: 128
+        nums_channels_hidden: [1024, 512, 256, 128, 64, 32]
+        num_channels_out: 3
         use_normalize: true
         kwargs_normalize:
-            mean: [0.5015, 0.4150, 0.3697]
-            std: [0.3061, 0.2822, 0.2801]
-measurers:
+            mean: [0.4375, 0.4436, 0.4727]
+            std: [0.1979, 0.2009, 0.1968]
+measurers_discriminator:
     training:
-        - name: Select
+        - name: Accuracy
           kwargs:
-              key: "prediction"
-              name_module: SmoothL1Loss
-              kwargs_module:
-                  beta: 1.0
-        - name: ELBOGaussian
-          kwargs: {}
+              task: binary
     validation:
-        - name: Select
+        - name: Accuracy
           kwargs:
-              key: "prediction"
-              name_module: SmoothL1Loss
-              kwargs_module:
-                  beta: 1.0
-        - name: ELBOGaussian
-          kwargs: {}
-        - name: Select
-          kwargs:
-              key: "prediction"
-              name_module: FrechetInceptionDistance
-              kwargs_module:
-                  use_unnormalize: true
-                  kwargs_unnormalize:
-                      mean: [0.5015, 0.4150, 0.3697]
-                      std: [0.3061, 0.2822, 0.2801]
-                  feature: 64
-                  normalize: true
-                  reset_real_features: false
+              task: binary
     test:
-        - name: Select
+        - name: Accuracy
           kwargs:
-              key: "prediction"
-              name_module: SmoothL1Loss
-              kwargs_module:
-                  beta: 1.0
-        - name: ELBOGaussian
-          kwargs: {}
-        - name: Select
+              task: binary
+measurers_generator:
+    training:
+        - name: FrechetInceptionDistance
           kwargs:
-              key: "prediction"
-              name_module: FrechetInceptionDistance
-              kwargs_module:
-                  use_unnormalize: true
-                  kwargs_unnormalize:
-                      mean: [0.5015, 0.4150, 0.3697]
-                      std: [0.3061, 0.2822, 0.2801]
-                  feature: 64
-                  normalize: true
-                  reset_real_features: false
+              use_unnormalize: true
+              kwargs_unnormalize:
+                  mean: [0.4375, 0.4436, 0.4727]
+                  std: [0.1979, 0.2009, 0.1968]
+              feature: 64
+              normalize: true
+              reset_real_features: true
+    validation:
+        - name: FrechetInceptionDistance
+          kwargs:
+              use_unnormalize: true
+              kwargs_unnormalize:
+                  mean: [0.4375, 0.4436, 0.4727]
+                  std: [0.1979, 0.2009, 0.1968]
+              feature: 64
+              normalize: true
+              reset_real_features: true
+    test:
+        - name: FrechetInceptionDistance
+          kwargs:
+              use_unnormalize: true
+              kwargs_unnormalize:
+                  mean: [0.4375, 0.4436, 0.4727]
+                  std: [0.1979, 0.2009, 0.1968]
+              feature: 64
+              normalize: true
+              reset_real_features: true
 criterion:
-    name: SumWeighted
-    modules:
-        - name: Select
-          kwargs:
-              key: "prediction"
-              name_module: SmoothL1Loss
-              kwargs_module:
-                  beta: 1.0
-        - name: ELBOGaussian
-          kwargs: {}
-    kwargs:
-        weights: [1.0, 1.0e-3]
+    name: BCELoss
 training:
     num_epochs: 20
     optimizer:
@@ -212,9 +170,9 @@ training:
         kwargs:
             lr: 3.0e-4
             weight_decay: 1.0e-3
+            betas: [0.5, 0.9]
     scheduler:
         name: SequentialLR
-        dynamic:
         schedulers:
             - name: LinearLR
               kwargs:
@@ -234,5 +192,6 @@ logging:
         frequency: 10
     tensorboard:
         frequency: 1
+        frequency_images: 300
     checkpoint:
         frequency: 10
