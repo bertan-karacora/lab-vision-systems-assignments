@@ -140,8 +140,8 @@ torch-fidelity==0.3.0
 torch-summary==1.4.5
 torch-tb-profiler==0.4.3
 torchaudio==2.3.1+cu118
+torchinfo==1.8.0
 torchmetrics==1.4.0.post0
-torchsummary==1.5.1
 torchvision==0.18.1+cu118
 tornado==6.4
 tqdm==4.66.2

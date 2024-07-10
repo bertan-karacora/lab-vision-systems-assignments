@@ -1,0 +1,228 @@
+criterion:
+    kwargs:
+        margin: 0.2
+        method_mining: random
+    name: TripletLoss
+data:
+    test:
+        dataloader:
+            kwargs:
+                batch_size: 256
+                pin_memory: true
+                shuffle: false
+        dataset:
+            kwargs:
+                ratio_validation_to_training: 0.2
+                type_funneling: deepfunneled
+                use_download: false
+                use_remove_single_occurances: true
+            mean:
+                - 0.4614
+                - 0.3953
+                - 0.348
+            name: LFWTriplets
+            std:
+                - 0.2861
+                - 0.2614
+                - 0.2568
+            transform:
+                features:
+                    name: Compose
+                    transforms:
+                        -   name: PILToTensor
+                        -   kwargs:
+                                size:
+                                    - 256
+                                    - 256
+                            name: Resize
+                        -   kwargs:
+                                size:
+                                    - 224
+                                    - 224
+                            name: CenterCrop
+                        -   kwargs:
+                                dtype: float32
+                                scale: true
+                            name: ToDtype
+                        -   kwargs:
+                                mean:
+                                    - 0.4614
+                                    - 0.3953
+                                    - 0.348
+                                std:
+                                    - 0.2861
+                                    - 0.2614
+                                    - 0.2568
+                            name: Normalize
+                target: null
+    training:
+        dataloader:
+            kwargs:
+                batch_size: 128
+                pin_memory: true
+                shuffle: true
+        dataset:
+            kwargs:
+                ratio_validation_to_training: 0.2
+                type_funneling: deepfunneled
+                use_download: false
+                use_remove_single_occurances: false
+            mean:
+                - 0.4614
+                - 0.3953
+                - 0.348
+            name: LFWTriplets
+            std:
+                - 0.2861
+                - 0.2614
+                - 0.2568
+            transform:
+                features:
+                    name: Compose
+                    transforms:
+                        -   name: PILToTensor
+                        -   kwargs:
+                                ratio:
+                                    - 0.8
+                                    - 1.2
+                                scale:
+                                    - 0.4
+                                    - 1.0
+                                size:
+                                    - 224
+                                    - 224
+                            name: RandomResizedCrop
+                        -   kwargs:
+                                p: 0.5
+                            name: RandomHorizontalFlip
+                        -   kwargs:
+                                degrees:
+                                    - -20.0
+                                    - 20.0
+                            name: RandomRotation
+                        -   kwargs:
+                                dtype: float32
+                                scale: true
+                            name: ToDtype
+                        -   kwargs:
+                                brightness:
+                                    - 0.75
+                                    - 1.333
+                                contrast:
+                                    - 0.8
+                                    - 1.2
+                                hue:
+                                    - 0.0
+                                    - 0.0
+                                saturation:
+                                    - 0.8
+                                    - 1.2
+                            name: ColorJitter
+                        -   kwargs:
+                                mean:
+                                    - 0.4614
+                                    - 0.3953
+                                    - 0.348
+                                std:
+                                    - 0.2861
+                                    - 0.2614
+                                    - 0.2568
+                            name: Normalize
+                target: null
+    validation:
+        dataloader:
+            kwargs:
+                batch_size: 128
+                pin_memory: true
+                shuffle: false
+        dataset:
+            kwargs:
+                ratio_validation_to_training: 0.2
+                type_funneling: deepfunneled
+                use_download: false
+                use_remove_single_occurances: true
+            mean:
+                - 0.4614
+                - 0.3953
+                - 0.348
+            name: LFWTriplets
+            std:
+                - 0.2861
+                - 0.2614
+                - 0.2568
+            transform:
+                features:
+                    name: Compose
+                    transforms:
+                        -   name: PILToTensor
+                        -   kwargs:
+                                size:
+                                    - 256
+                                    - 256
+                            name: Resize
+                        -   kwargs:
+                                size:
+                                    - 224
+                                    - 224
+                            name: CenterCrop
+                        -   kwargs:
+                                dtype: float32
+                                scale: true
+                            name: ToDtype
+                        -   kwargs:
+                                mean:
+                                    - 0.4614
+                                    - 0.3953
+                                    - 0.348
+                                std:
+                                    - 0.2861
+                                    - 0.2614
+                                    - 0.2568
+                            name: Normalize
+                target: null
+logging:
+    checkpoint:
+        frequency: 10
+    tensorboard:
+        frequency: 1
+        frequency_images: 300
+    tqdm:
+        frequency: 5
+measurers:
+    test: []
+    training: []
+    validation: []
+model:
+    kwargs:
+        num_channels_latent: 128
+        weights_mobilenet: DEFAULT
+    name: TriNetAdapted
+    shape_input:
+        - 128
+        - 3
+        - 224
+        - 224
+training:
+    early_stopping:
+        patience: 10
+    num_epochs: 30
+    optimizer:
+        kwargs:
+            lr: 0.0001
+            weight_decay: 0.001
+        name: Adam
+    scheduler:
+        kwargs:
+            milestones:
+                - 5
+        name: SequentialLR
+        schedulers:
+            -   kwargs:
+                    end_factor: 1.0
+                    start_factor: 0.333
+                    total_iters: 5
+                name: LinearLR
+            -   kwargs:
+                    gamma: 0.95
+                name: ExponentialLR
+    use_amp: false
