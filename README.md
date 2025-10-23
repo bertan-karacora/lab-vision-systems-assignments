@@ -1,8 +1,4 @@
-# Assignments for Lab Vision Systems
-
-## Links
-
-- [Course website](https://www.ais.uni-bonn.de/SS24/4308_Lab_Vision_Systems.html)
+# Assignments for the Lab Vision Systems
 
 ## Assignment topics
 
@@ -43,5 +39,9 @@ pip install -r requirements.txt
 |     4      |  100  |  100   |
 |     5      |  100  |  100   |
 |     6      |  100  |  100   |
-|     7      |  100  |        |
-|  **SUM**   |  700  |        |
+|     7      |  100  |  125   |
+|  **SUM**   |  700  |  700   |
+
+## Links
+
+- [Course website](https://www.ais.uni-bonn.de/SS24/4308_Lab_Vision_Systems.html)
